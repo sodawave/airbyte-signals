@@ -1,0 +1,13 @@
+---
+description: Generic BMAD process — debate, spine, spec; honor Prevents
+alwaysApply: true
+---
+
+# BMAD process (generic)
+
+- **BMAD must be installed** at workspace root (`_bmad/`, `.agents/skills/`). If absent, install/adopt via BMAD. Never put BMAD under an Airbyte module. Do not invent a parallel methodology.
+- Planned product work: **debate → architecture spine + memlog → spec or epics/stories → implement → evidence**.
+- Before inventing architecture, read `_bmad-output/planning-artifacts/**/ARCHITECTURE-SPINE.md` and `.memlog.md`.
+- Obey **Binds / Prevents / Rule** and **Deferred / Rejected**. Those negatives block paths agents must not reopen without a new adopted spine decision.
+- Implement only in existing native `airbyte-*` modules. Rejected parallel root directories (`src/`, `protocol/`, `cdk/`, `core/`, `connectors/`, `platform/`) are forbidden.
+- Follow [`AGENTS.md`](AGENTS.md) for repo-specific branches, layout, and quality. Do **not** put feature-specific design (topics, stacks, product bets) into this global process rule — that belongs in the relevant spine/spec only.

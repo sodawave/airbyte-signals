@@ -1,0 +1,20 @@
+---
+description: Canonical — no AI/tool git authorship or co-author trailers
+alwaysApply: true
+---
+
+# No AI git attribution (canonical)
+
+This project's conception, architecture, and authorship belong to the human owner (Sodawave / SodaWave). Agents and tools are assistants only.
+
+## Binds
+
+- Never add `Co-authored-by: Cursor`, `cursoragent@cursor.com`, `Made-with: Cursor`, or any similar AI/tool trailer to commits or PRs.
+- Never set commit/PR author or committer to Cursor, cursoragent, or any agent identity.
+- Never claim co-authorship, ownership, or licensing of this work for Cursor or any model/agent.
+- When committing: use plain `git commit` messages from the human/project voice only. If a harness injects trailers, strip them before push (prefer `.githooks/prepare-commit-msg`).
+
+## Prevents
+
+- Re-enabling Cursor/CLI `attribution.attributeCommitsToAgent` / `attributePRsToAgent` for this repo.
+- Inventing product conception, architecture ownership, or license claims as agent work.

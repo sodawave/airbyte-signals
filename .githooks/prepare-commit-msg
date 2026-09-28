@@ -1,0 +1,16 @@
+#!/bin/sh
+# Canonical: strip AI/tool co-author and Made-with trailers from commit messages.
+# Enable with: git config core.hooksPath .githooks
+
+MSG_FILE="$1"
+[ -n "$MSG_FILE" ] && [ -f "$MSG_FILE" ] || exit 0
+
+# macOS/BSD and GNU sed compatible in-place edit via temp file
+tmp="${MSG_FILE}.strip-ai.$$"
+sed -e '/^Co-authored-by:[[:space:]]*Cursor[[:space:]]*<cursoragent@cursor\.com>[[:space:]]*$/d' \
+    -e '/^Co-authored-by:[[:space:]]*.*<cursoragent@cursor\.com>[[:space:]]*$/d' \
+    -e '/^Made-with:[[:space:]]*Cursor[[:space:]]*$/d' \
+    -e '/^Made-with:[[:space:]]*Cursor Agent[[:space:]]*$/d' \
+    "$MSG_FILE" > "$tmp" && mv "$tmp" "$MSG_FILE"
+
+exit 0
