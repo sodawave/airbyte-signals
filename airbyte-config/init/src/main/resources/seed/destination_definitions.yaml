@@ -450,3 +450,9 @@
   documentationUrl: https://docs.airbyte.io/integrations/destinations/duckdb
   icon: duckdb.svg
   releaseStage: alpha
+- name: Puente Paper
+  destinationDefinitionId: a8bc6435-85a6-4338-a98f-45f6557bb87b
+  dockerRepository: airbyte/destination-paper
+  dockerImageTag: 0.1.0
+  documentationUrl: https://airbyte.com
+  releaseStage: alpha

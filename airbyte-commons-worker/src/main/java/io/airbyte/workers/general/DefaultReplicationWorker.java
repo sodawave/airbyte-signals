@@ -37,6 +37,10 @@ import io.airbyte.workers.WorkerMetricReporter;
 import io.airbyte.workers.WorkerUtils;
 import io.airbyte.workers.exception.RecordSchemaValidationException;
 import io.airbyte.workers.exception.WorkerException;
+import io.airbyte.workers.general.puente.InMemoryPuenteJournalWriter;
+import io.airbyte.workers.general.puente.PuenteJournalWriter;
+import io.airbyte.workers.general.puente.PuenteReplicationPolicy;
+import io.airbyte.workers.general.puente.PuenteReplicationPolicy.PreparedFill;
 import io.airbyte.workers.helper.ConnectorConfigUpdater;
 import io.airbyte.workers.helper.FailureHelper;
 import io.airbyte.workers.helper.ThreadedTimeTracker;
@@ -107,6 +111,7 @@ public class DefaultReplicationWorker implements ReplicationWorker {
   private final WorkerMetricReporter metricReporter;
   private final ConnectorConfigUpdater connectorConfigUpdater;
   private final boolean fieldSelectionEnabled;
+  private final PuenteJournalWriter puenteJournalWriter;
 
   public DefaultReplicationWorker(final String jobId,
                                   final int attempt,
@@ -118,6 +123,21 @@ public class DefaultReplicationWorker implements ReplicationWorker {
                                   final WorkerMetricReporter metricReporter,
                                   final ConnectorConfigUpdater connectorConfigUpdater,
                                   final boolean fieldSelectionEnabled) {
+    this(jobId, attempt, source, mapper, destination, messageTracker, recordSchemaValidator, metricReporter,
+        connectorConfigUpdater, fieldSelectionEnabled, new InMemoryPuenteJournalWriter());
+  }
+
+  public DefaultReplicationWorker(final String jobId,
+                                  final int attempt,
+                                  final AirbyteSource source,
+                                  final AirbyteMapper mapper,
+                                  final AirbyteDestination destination,
+                                  final MessageTracker messageTracker,
+                                  final RecordSchemaValidator recordSchemaValidator,
+                                  final WorkerMetricReporter metricReporter,
+                                  final ConnectorConfigUpdater connectorConfigUpdater,
+                                  final boolean fieldSelectionEnabled,
+                                  final PuenteJournalWriter puenteJournalWriter) {
     this.jobId = jobId;
     this.attempt = attempt;
     this.source = source;
@@ -129,6 +149,7 @@ public class DefaultReplicationWorker implements ReplicationWorker {
     this.metricReporter = metricReporter;
     this.connectorConfigUpdater = connectorConfigUpdater;
     this.fieldSelectionEnabled = fieldSelectionEnabled;
+    this.puenteJournalWriter = puenteJournalWriter;
 
     this.cancelled = new AtomicBoolean(false);
     this.hasFailed = new AtomicBoolean(false);
@@ -170,9 +191,13 @@ public class DefaultReplicationWorker implements ReplicationWorker {
               s -> String.format("%s - %s", s.getSyncMode(), s.getDestinationSyncMode()))));
       LOGGER.debug("field selection enabled: {}", fieldSelectionEnabled);
       final WorkerSourceConfig sourceConfig = WorkerUtils.syncToWorkerSourceConfig(syncInput);
+      final Optional<PuenteReplicationPolicy> puentePolicy = syncInput.getPuentePolicy() == null
+          ? Optional.empty()
+          : Optional.of(new PuenteReplicationPolicy(syncInput.getConnectionId(), syncInput.getDestinationId(),
+              syncInput.getPuentePolicy(), puenteJournalWriter, attempt + 1));
 
       ApmTraceUtils.addTagsToTrace(generateTraceTags(destinationConfig, jobRoot));
-      replicate(jobRoot, destinationConfig, timeTracker, replicationRunnableFailureRef, destinationRunnableFailureRef, sourceConfig);
+      replicate(jobRoot, destinationConfig, timeTracker, replicationRunnableFailureRef, destinationRunnableFailureRef, sourceConfig, puentePolicy);
       timeTracker.trackReplicationEndTime();
 
       return getReplicationOutput(syncInput, destinationConfig, replicationRunnableFailureRef, destinationRunnableFailureRef, timeTracker);
@@ -188,7 +213,8 @@ public class DefaultReplicationWorker implements ReplicationWorker {
                          final ThreadedTimeTracker timeTracker,
                          final AtomicReference<FailureReason> replicationRunnableFailureRef,
                          final AtomicReference<FailureReason> destinationRunnableFailureRef,
-                         final WorkerSourceConfig sourceConfig) {
+                         final WorkerSourceConfig sourceConfig,
+                         final Optional<PuenteReplicationPolicy> puentePolicy) {
     final Map<String, String> mdc = MDC.getCopyOfContextMap();
 
     // note: resources are closed in the opposite order in which they are declared. thus source will be
@@ -202,7 +228,8 @@ public class DefaultReplicationWorker implements ReplicationWorker {
       // note: `whenComplete` is used instead of `exceptionally` so that the original exception is still
       // thrown
       final CompletableFuture<?> readFromDstThread = CompletableFuture.runAsync(
-          readFromDstRunnable(destination, cancelled, messageTracker, connectorConfigUpdater, mdc, timeTracker, destinationConfig.getDestinationId()),
+          readFromDstRunnable(destination, cancelled, messageTracker, connectorConfigUpdater, mdc, timeTracker, destinationConfig.getDestinationId(),
+              puentePolicy),
           executors)
           .whenComplete((msg, ex) -> {
             if (ex != null) {
@@ -229,7 +256,8 @@ public class DefaultReplicationWorker implements ReplicationWorker {
               metricReporter,
               timeTracker,
               sourceConfig.getSourceId(),
-              fieldSelectionEnabled),
+              fieldSelectionEnabled,
+              puentePolicy),
           executors)
           .whenComplete((msg, ex) -> {
             if (ex != null) {
@@ -269,7 +297,8 @@ public class DefaultReplicationWorker implements ReplicationWorker {
                                               final ConnectorConfigUpdater connectorConfigUpdater,
                                               final Map<String, String> mdc,
                                               final ThreadedTimeTracker timeHolder,
-                                              final UUID destinationId) {
+                                              final UUID destinationId,
+                                              final Optional<PuenteReplicationPolicy> puentePolicy) {
     return () -> {
       MDC.setContextMap(mdc);
       LOGGER.info("Destination output thread started.");
@@ -285,7 +314,10 @@ public class DefaultReplicationWorker implements ReplicationWorker {
             final AirbyteMessage message = messageOptional.get();
             LOGGER.info("State in DefaultReplicationWorker from destination: {}", message);
 
-            messageTracker.acceptFromDestination(message);
+            final boolean puenteAcknowledgment = puentePolicy.map(policy -> policy.acknowledge(message)).orElse(false);
+            if (!puenteAcknowledgment) {
+              messageTracker.acceptFromDestination(message);
+            }
 
             try {
               if (message.getType() == Type.CONTROL) {
@@ -296,6 +328,7 @@ public class DefaultReplicationWorker implements ReplicationWorker {
             }
           }
         }
+        puentePolicy.ifPresent(policy -> policy.rejectPending("destination_finished_without_ack"));
         timeHolder.trackDestinationWriteEndTime();
         if (!cancelled.get() && destination.getExitValue() != 0) {
           throw new DestinationException("Destination process exited with non-zero exit code " + destination.getExitValue());
@@ -331,7 +364,8 @@ public class DefaultReplicationWorker implements ReplicationWorker {
                                                            final WorkerMetricReporter metricReporter,
                                                            final ThreadedTimeTracker timeHolder,
                                                            final UUID sourceId,
-                                                           final boolean fieldSelectionEnabled) {
+                                                           final boolean fieldSelectionEnabled,
+                                                           final Optional<PuenteReplicationPolicy> puentePolicy) {
     return () -> {
       MDC.setContextMap(mdc);
       LOGGER.info("Replication thread started.");
@@ -373,7 +407,20 @@ public class DefaultReplicationWorker implements ReplicationWorker {
 
             try {
               if (message.getType() == Type.RECORD || message.getType() == Type.STATE) {
-                destination.accept(message);
+                final Optional<PreparedFill> prepared = puentePolicy.isPresent()
+                    ? puentePolicy.get().prepare(message)
+                    : Optional.of(new PreparedFill(message, null, null, null, null, null, null));
+                if (prepared.isPresent()) {
+                  try {
+                    final boolean shouldSend = puentePolicy.map(policy -> policy.registerPending(prepared.get())).orElse(true);
+                    if (shouldSend) {
+                      destination.accept(prepared.get().message());
+                    }
+                  } catch (final Exception e) {
+                    puentePolicy.ifPresent(policy -> policy.rejected(prepared.get(), e));
+                    throw e;
+                  }
+                }
               }
             } catch (final Exception e) {
               throw new DestinationException("Destination process message delivery failed", e);

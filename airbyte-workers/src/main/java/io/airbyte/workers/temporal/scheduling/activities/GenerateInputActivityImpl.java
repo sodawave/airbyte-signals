@@ -220,7 +220,8 @@ public class GenerateInputActivityImpl implements GenerateInputActivity {
           .withSourceResourceRequirements(config.getSourceResourceRequirements())
           .withDestinationResourceRequirements(config.getDestinationResourceRequirements())
           .withConnectionId(standardSync.getConnectionId())
-          .withWorkspaceId(config.getWorkspaceId());
+          .withWorkspaceId(config.getWorkspaceId())
+          .withPuentePolicy(standardSync.getPuentePolicy());
 
       saveAttemptSyncConfig(jobId, attempt, connectionId, attemptSyncConfig);
 

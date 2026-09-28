@@ -107,6 +107,7 @@ public class ConfigRepository {
   private final ExceptionWrappingDatabase database;
   private final ActorDefinitionMigrator actorDefinitionMigrator;
   private final StandardSyncPersistence standardSyncPersistence;
+  private final PuenteOperationJournalPersistence puenteOperationJournalPersistence;
 
   public ConfigRepository(final Database database) {
     this(database, new ActorDefinitionMigrator(new ExceptionWrappingDatabase(database)), new StandardSyncPersistence(database));
@@ -118,6 +119,19 @@ public class ConfigRepository {
     this.database = new ExceptionWrappingDatabase(database);
     this.actorDefinitionMigrator = actorDefinitionMigrator;
     this.standardSyncPersistence = standardSyncPersistence;
+    this.puenteOperationJournalPersistence = new PuenteOperationJournalPersistence(database);
+  }
+
+  public List<PuenteOperationJournalPersistence.JournalRecord> listPuenteJournal(final UUID connectionId) throws IOException {
+    return puenteOperationJournalPersistence.list(connectionId);
+  }
+
+  public void appendPuenteJournal(final PuenteOperationJournalPersistence.JournalRecord entry) throws IOException {
+    puenteOperationJournalPersistence.append(entry);
+  }
+
+  public boolean hasAcceptedPuenteFill(final String sourceFillId, final UUID destinationId) throws IOException {
+    return puenteOperationJournalPersistence.hasAccepted(sourceFillId, destinationId);
   }
 
   /**

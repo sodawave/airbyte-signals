@@ -1,0 +1,26 @@
+[
+  {
+    "source_fill_id": "paper-dax-1",
+    "symbol": "DAX",
+    "side": "buy",
+    "quantity": 1.0,
+    "price": 20000.0,
+    "origen_en": "2026-01-01T00:00:00+00:00"
+  },
+  {
+    "source_fill_id": "paper-dj-1",
+    "symbol": "DJ",
+    "side": "sell",
+    "quantity": 2.0,
+    "price": 42000.0,
+    "origen_en": "2026-01-01T00:00:00+00:00"
+  },
+  {
+    "source_fill_id": "paper-es-1",
+    "symbol": "ES",
+    "side": "buy",
+    "quantity": 1.0,
+    "price": 6000.0,
+    "origen_en": "2026-01-01T00:00:00+00:00"
+  }
+]

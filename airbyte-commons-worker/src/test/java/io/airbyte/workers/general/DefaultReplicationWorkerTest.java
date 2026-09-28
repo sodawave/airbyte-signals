@@ -28,6 +28,8 @@ import io.airbyte.config.ConfigSchema;
 import io.airbyte.config.Configs.WorkerEnvironment;
 import io.airbyte.config.FailureReason;
 import io.airbyte.config.FailureReason.FailureOrigin;
+import io.airbyte.config.PuenteConnectionPolicy;
+import io.airbyte.config.PuenteCrosswalkRow;
 import io.airbyte.config.ReplicationAttemptSummary;
 import io.airbyte.config.ReplicationOutput;
 import io.airbyte.config.StandardSync;
@@ -45,6 +47,8 @@ import io.airbyte.metrics.lib.MetricClient;
 import io.airbyte.metrics.lib.MetricClientFactory;
 import io.airbyte.protocol.models.AirbyteLogMessage.Level;
 import io.airbyte.protocol.models.AirbyteMessage;
+import io.airbyte.protocol.models.AirbyteRecordMessage;
+import io.airbyte.protocol.models.AirbyteStateMessage;
 import io.airbyte.protocol.models.AirbyteStreamNameNamespacePair;
 import io.airbyte.protocol.models.AirbyteTraceMessage;
 import io.airbyte.protocol.models.Config;
@@ -53,6 +57,7 @@ import io.airbyte.workers.RecordSchemaValidator;
 import io.airbyte.workers.WorkerMetricReporter;
 import io.airbyte.workers.WorkerUtils;
 import io.airbyte.workers.exception.WorkerException;
+import io.airbyte.workers.general.puente.InMemoryPuenteJournalWriter;
 import io.airbyte.workers.helper.ConnectorConfigUpdater;
 import io.airbyte.workers.helper.FailureHelper;
 import io.airbyte.workers.internal.AirbyteDestination;
@@ -70,6 +75,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.junit.jupiter.api.AfterEach;
@@ -180,6 +188,86 @@ class DefaultReplicationWorkerTest {
         AirbyteStreamNameNamespacePair.fromRecordMessage(RECORD_MESSAGE1.getRecord()));
     verify(recordSchemaValidator).validateSchema(RECORD_MESSAGE2.getRecord(),
         AirbyteStreamNameNamespacePair.fromRecordMessage(RECORD_MESSAGE2.getRecord()));
+  }
+
+  @Test
+  void puenteWaitsForDestinationAcknowledgmentBeforeAccepting() throws Exception {
+    final String fillId = "paper-dax-ack";
+    syncInput.getCatalog().getStreams().get(0).getStream().setName("fills");
+    syncInput.getCatalog().getStreams().get(0).getStream().setJsonSchema(Jsons.jsonNode(Map.of(
+        "type", "object",
+        "properties", Map.of(
+            "source_fill_id", Map.of("type", "string"),
+            "symbol", Map.of("type", "string"),
+            "quantity", Map.of("type", "number"),
+            "origen_en", Map.of("type", "string")))));
+    when(mapper.mapCatalog(Mockito.any())).thenAnswer(invocation -> invocation.getArgument(0));
+    final AirbyteMessage fill = new AirbyteMessage()
+        .withType(AirbyteMessage.Type.RECORD)
+        .withRecord(new AirbyteRecordMessage()
+            .withStream("fills")
+            .withEmittedAt(0L)
+            .withData(Jsons.jsonNode(Map.of(
+                "source_fill_id", fillId,
+                "symbol", "DAX",
+                "quantity", 1D,
+                "origen_en", "2026-01-01T00:00:00Z"))));
+    final PuenteConnectionPolicy policy = new PuenteConnectionPolicy()
+        .withMode(PuenteConnectionPolicy.Mode.LIVE)
+        .withLiveQuota(1L)
+        .withRows(List.of(new PuenteCrosswalkRow()
+            .withSourceSymbol("DAX")
+            .withCanonicalInstrument("DE40")
+            .withDestinationSymbol("GER40")
+            .withContractFactor(1D)
+            .withScale(1D)));
+    syncInput.setPuentePolicy(policy);
+
+    final InMemoryPuenteJournalWriter journal = new InMemoryPuenteJournalWriter();
+    final CountDownLatch destinationReceived = new CountDownLatch(1);
+    final AtomicBoolean acknowledgmentRead = new AtomicBoolean(false);
+    when(source.isFinished()).thenReturn(false, true);
+    when(source.attemptRead()).thenReturn(Optional.of(fill));
+    when(mapper.mapMessage(fill)).thenReturn(fill);
+    when(destination.isFinished()).thenAnswer(ignored -> acknowledgmentRead.get());
+    Mockito.doAnswer(ignored -> {
+      assertFalse(journal.hasAccepted(fillId, syncInput.getDestinationId()));
+      destinationReceived.countDown();
+      return null;
+    }).when(destination).accept(Mockito.any());
+    when(destination.attemptRead()).thenAnswer(ignored -> {
+      assertTrue(destinationReceived.await(5, TimeUnit.SECONDS));
+      acknowledgmentRead.set(true);
+      return Optional.of(new AirbyteMessage()
+          .withType(AirbyteMessage.Type.STATE)
+          .withState(new AirbyteStateMessage().withData(Jsons.jsonNode(Map.of(
+              "_puente_ack", Map.of(
+                  "source_fill_id", fillId,
+                  "destination_id", syncInput.getDestinationId().toString(),
+                  "status", "accepted",
+                  "response", Map.of("accepted", true, "persisted", true)))))));
+    });
+
+    final ReplicationWorker worker = new DefaultReplicationWorker(
+        JOB_ID,
+        JOB_ATTEMPT,
+        source,
+        mapper,
+        destination,
+        messageTracker,
+        recordSchemaValidator,
+        workerMetricReporter,
+        connectorConfigUpdater,
+        false,
+        journal);
+
+    final ReplicationOutput output = worker.run(syncInput, jobRoot);
+
+    assertEquals(ReplicationStatus.COMPLETED, output.getReplicationAttemptSummary().getStatus());
+    assertTrue(journal.hasAccepted(fillId, syncInput.getDestinationId()));
+    assertEquals(0L, policy.getLiveQuota());
+    assertTrue(journal.entries().get(0).destinationResponse().get("persisted").asBoolean());
+    verify(messageTracker, never()).acceptFromDestination(Mockito.any());
   }
 
   @Test

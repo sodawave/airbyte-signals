@@ -20,6 +20,8 @@ import io.airbyte.config.ActorType;
 import io.airbyte.config.DestinationConnection;
 import io.airbyte.config.Geography;
 import io.airbyte.config.JobSyncConfig.NamespaceDefinitionType;
+import io.airbyte.config.PuenteConnectionPolicy;
+import io.airbyte.config.PuenteCrosswalkRow;
 import io.airbyte.config.ResourceRequirements;
 import io.airbyte.config.SourceConnection;
 import io.airbyte.config.StandardDestinationDefinition;
@@ -85,13 +87,44 @@ class StandardSyncPersistenceTest extends BaseConfigDatabaseTest {
   @Test
   void testReadWrite() throws IOException, ConfigNotFoundException, JsonValidationException {
     createBaseObjects();
-    final StandardSync sync = createStandardSync(source1, destination1);
+    final StandardSync sync = createStandardSync(source1, destination1)
+        .withPuentePolicy(new PuenteConnectionPolicy()
+            .withMode(PuenteConnectionPolicy.Mode.PAPER)
+            .withRows(List.of(new PuenteCrosswalkRow()
+                .withSourceSymbol("DAX")
+                .withCanonicalInstrument("DE40")
+                .withDestinationSymbol("GER40")
+                .withContractFactor(1D)
+                .withScale(1D))));
     standardSyncPersistence.writeStandardSync(sync);
 
     final StandardSync expectedSync = Jsons.clone(sync)
         .withNotifySchemaChanges(true)
         .withNonBreakingChangesPreference(NonBreakingChangesPreference.IGNORE);
     assertEquals(expectedSync, standardSyncPersistence.getStandardSync(sync.getConnectionId()));
+
+    final PuenteOperationJournalPersistence journal = new PuenteOperationJournalPersistence(database);
+    final OffsetDateTime originAt = OffsetDateTime.parse("2026-01-01T00:00:00Z");
+    final OffsetDateTime replicaAt = originAt.plusSeconds(1);
+    journal.append(new PuenteOperationJournalPersistence.JournalRecord(
+        UUID.randomUUID(),
+        sync.getConnectionId(),
+        "paper-fill-1",
+        destination1.getDestinationId(),
+        "accepted",
+        null,
+        Jsons.jsonNode("{\"symbol\":\"DAX\"}"),
+        Jsons.jsonNode("{\"symbol\":\"GER40\"}"),
+        Jsons.jsonNode("{\"accepted\":true}"),
+        Jsons.jsonNode(List.of("accepted")),
+        originAt,
+        originAt,
+        originAt,
+        replicaAt,
+        1000L,
+        1));
+    assertTrue(journal.hasAccepted("paper-fill-1", destination1.getDestinationId()));
+    assertEquals(1000L, journal.list(sync.getConnectionId()).get(0).desfaseMs());
   }
 
   @Test

@@ -2207,3 +2207,15 @@
   documentationUrl: https://docs.airbyte.io/integrations/sources/braze
   sourceType: api
   releaseStage: alpha
+- name: Puente Paper
+  sourceDefinitionId: 3f86e20a-9ea8-4b93-9172-21d35a88f671
+  dockerRepository: airbyte/source-paper
+  dockerImageTag: 0.1.0
+  documentationUrl: https://airbyte.com
+  sourceType: api
+  releaseStage: alpha
+  allowedHosts:
+    hosts: []
+  suggestedStreams:
+    streams:
+      - fills

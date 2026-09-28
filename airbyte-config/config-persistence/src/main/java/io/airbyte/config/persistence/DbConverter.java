@@ -28,6 +28,7 @@ import io.airbyte.config.Geography;
 import io.airbyte.config.JobSyncConfig.NamespaceDefinitionType;
 import io.airbyte.config.NormalizationDestinationDefinitionConfig;
 import io.airbyte.config.Notification;
+import io.airbyte.config.PuenteConnectionPolicy;
 import io.airbyte.config.ResourceRequirements;
 import io.airbyte.config.Schedule;
 import io.airbyte.config.ScheduleData;
@@ -52,13 +53,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import org.jooq.Field;
+import org.jooq.JSONB;
 import org.jooq.Record;
+import org.jooq.impl.DSL;
 
 /**
  * Provides static methods for converting from repository layer results (often in the form of a jooq
  * {@link Record}) to config models.
  */
 public class DbConverter {
+
+  private static final Field<JSONB> PUENTE_POLICY = DSL.field(DSL.name("connection", "puente_policy"), JSONB.class);
 
   public static StandardSync buildStandardSync(final Record record, final List<UUID> connectionOperationId) {
     return new StandardSync()
@@ -92,7 +98,9 @@ public class DbConverter {
         .withGeography(Enums.toEnum(record.get(CONNECTION.GEOGRAPHY, String.class), Geography.class).orElseThrow())
         .withNonBreakingChangesPreference(
             Enums.toEnum(record.get(CONNECTION.NON_BREAKING_CHANGE_PREFERENCE, String.class), NonBreakingChangesPreference.class).orElseThrow())
-        .withNotifySchemaChanges(record.get(CONNECTION.NOTIFY_SCHEMA_CHANGES));
+        .withNotifySchemaChanges(record.get(CONNECTION.NOTIFY_SCHEMA_CHANGES))
+        .withPuentePolicy(record.get(PUENTE_POLICY) == null ? null
+            : Jsons.deserialize(record.get(PUENTE_POLICY).data(), PuenteConnectionPolicy.class));
   }
 
   private static ConfiguredAirbyteCatalog parseConfiguredAirbyteCatalog(final String configuredAirbyteCatalogString) {

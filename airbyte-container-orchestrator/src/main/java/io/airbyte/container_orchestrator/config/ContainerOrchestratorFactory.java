@@ -4,6 +4,7 @@
 
 package io.airbyte.container_orchestrator.config;
 
+import io.airbyte.api.client.generated.ConnectionApi;
 import io.airbyte.api.client.generated.DestinationApi;
 import io.airbyte.api.client.generated.SourceApi;
 import io.airbyte.commons.features.EnvVariableFeatureFlags;
@@ -106,11 +107,12 @@ class ContainerOrchestratorFactory {
                                      final AirbyteProtocolVersionedMigratorFactory migratorFactory,
                                      final JobRunConfig jobRunConfig,
                                      final SourceApi sourceApi,
-                                     final DestinationApi destinationApi) {
+                                     final DestinationApi destinationApi,
+                                     final ConnectionApi connectionApi) {
     return switch (application) {
       case ReplicationLauncherWorker.REPLICATION -> new ReplicationJobOrchestrator(envConfigs, processFactory, featureFlags, featureFlagClient,
           serdeProvider,
-          migratorFactory, jobRunConfig, sourceApi, destinationApi);
+          migratorFactory, jobRunConfig, sourceApi, destinationApi, connectionApi);
       case NormalizationLauncherWorker.NORMALIZATION -> new NormalizationJobOrchestrator(envConfigs, processFactory, jobRunConfig);
       case DbtLauncherWorker.DBT -> new DbtJobOrchestrator(envConfigs, workerConfigs, processFactory, jobRunConfig);
       case AsyncOrchestratorPodProcess.NO_OP -> new NoOpOrchestrator();

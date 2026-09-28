@@ -15,6 +15,8 @@ import io.airbyte.api.model.generated.ConnectionReadList;
 import io.airbyte.api.model.generated.ConnectionSearch;
 import io.airbyte.api.model.generated.ConnectionUpdate;
 import io.airbyte.api.model.generated.JobInfoRead;
+import io.airbyte.api.model.generated.PuenteJournalRead;
+import io.airbyte.api.model.generated.PuenteJournalReadList;
 import io.airbyte.api.model.generated.WorkspaceIdRequestBody;
 import io.airbyte.commons.auth.SecuredWorkspace;
 import io.airbyte.commons.server.handlers.ConnectionsHandler;
@@ -93,6 +95,26 @@ public class ConnectionApiController implements ConnectionApi {
   @SecuredWorkspace
   public ConnectionRead getConnection(@Body final ConnectionIdRequestBody connectionIdRequestBody) {
     return ApiHelper.execute(() -> connectionsHandler.getConnection(connectionIdRequestBody.getConnectionId()));
+  }
+
+  @Override
+  @Post(uri = "/puente/journal")
+  @Secured({READER})
+  @SecuredWorkspace
+  public PuenteJournalReadList listPuenteJournal(@Body final ConnectionIdRequestBody connectionIdRequestBody) {
+    return ApiHelper.execute(() -> connectionsHandler.listPuenteJournal(connectionIdRequestBody.getConnectionId()));
+  }
+
+  @Override
+  @Post(uri = "/puente/journal/append")
+  @Status(HttpStatus.NO_CONTENT)
+  @Secured({EDITOR})
+  @SecuredWorkspace
+  public void appendPuenteJournal(@Body final PuenteJournalRead operation) {
+    ApiHelper.execute(() -> {
+      connectionsHandler.appendPuenteJournal(operation);
+      return null;
+    });
   }
 
   @Override

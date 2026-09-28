@@ -1,0 +1,24 @@
+---
+"$schema": http://json-schema.org/draft-07/schema#
+"$id": https://github.com/airbytehq/airbyte/blob/master/airbyte-config/config-models/src/main/resources/types/PuenteConnectionPolicy.yaml
+title: PuenteConnectionPolicy
+description: Frozen, resolved policy used to replicate broker fills for a connection.
+type: object
+required:
+  - mode
+  - rows
+additionalProperties: false
+properties:
+  mode:
+    type: string
+    enum:
+      - paper
+      - live
+  liveQuota:
+    description: Remaining accepted live replicas. Null means unlimited.
+    type: integer
+    minimum: 0
+  rows:
+    type: array
+    items:
+      "$ref": PuenteCrosswalkRow.yaml

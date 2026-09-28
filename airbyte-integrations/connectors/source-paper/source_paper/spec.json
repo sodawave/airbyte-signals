@@ -1,0 +1,37 @@
+{
+  "documentationUrl": "https://airbyte.com",
+  "connectionSpecification": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Puente Paper Source",
+    "type": "object",
+    "required": ["entity_id", "symbol_map", "supported_asset_classes", "tradable_symbols"],
+    "additionalProperties": false,
+    "properties": {
+      "entity_id": {
+        "title": "Entidad",
+        "type": "string"
+      },
+      "symbol_map": {
+        "title": "Mapa de símbolos",
+        "type": "object",
+        "additionalProperties": {"type": "string"}
+      },
+      "supported_asset_classes": {
+        "title": "Clases de activo admitidas",
+        "type": "array",
+        "items": {"type": "string"}
+      },
+      "tradable_symbols": {
+        "title": "Símbolos operables",
+        "type": "array",
+        "items": {"type": "string"}
+      },
+      "fixture_origin": {
+        "title": "Origen temporal de fixtures",
+        "type": "string",
+        "format": "date-time",
+        "default": "2026-01-01T00:00:00+00:00"
+      }
+    }
+  }
+}

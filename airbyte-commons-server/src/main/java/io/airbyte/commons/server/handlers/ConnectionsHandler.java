@@ -20,6 +20,8 @@ import io.airbyte.api.model.generated.ConnectionSearch;
 import io.airbyte.api.model.generated.ConnectionUpdate;
 import io.airbyte.api.model.generated.DestinationRead;
 import io.airbyte.api.model.generated.DestinationSearch;
+import io.airbyte.api.model.generated.PuenteJournalRead;
+import io.airbyte.api.model.generated.PuenteJournalReadList;
 import io.airbyte.api.model.generated.SourceRead;
 import io.airbyte.api.model.generated.SourceSearch;
 import io.airbyte.api.model.generated.StreamDescriptor;
@@ -40,6 +42,8 @@ import io.airbyte.config.DestinationConnection;
 import io.airbyte.config.FieldSelectionData;
 import io.airbyte.config.Geography;
 import io.airbyte.config.JobSyncConfig.NamespaceDefinitionType;
+import io.airbyte.config.PuenteConnectionPolicy;
+import io.airbyte.config.PuenteCrosswalkRow;
 import io.airbyte.config.Schedule;
 import io.airbyte.config.ScheduleData;
 import io.airbyte.config.SourceConnection;
@@ -51,6 +55,7 @@ import io.airbyte.config.StandardWorkspace;
 import io.airbyte.config.helpers.ScheduleHelpers;
 import io.airbyte.config.persistence.ConfigNotFoundException;
 import io.airbyte.config.persistence.ConfigRepository;
+import io.airbyte.config.persistence.PuenteOperationJournalPersistence.JournalRecord;
 import io.airbyte.persistence.job.WorkspaceHelper;
 import io.airbyte.protocol.models.CatalogHelpers;
 import io.airbyte.protocol.models.ConfiguredAirbyteCatalog;
@@ -75,6 +80,8 @@ import org.slf4j.LoggerFactory;
 public class ConnectionsHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionsHandler.class);
+  private static final UUID PAPER_SOURCE_DEFINITION_ID = UUID.fromString("3f86e20a-9ea8-4b93-9172-21d35a88f671");
+  private static final UUID PAPER_DESTINATION_DEFINITION_ID = UUID.fromString("a8bc6435-85a6-4338-a98f-45f6557bb87b");
 
   private final ConfigRepository configRepository;
   private final Supplier<UUID> uuidGenerator;
@@ -153,9 +160,16 @@ public class ConnectionsHandler {
         .withGeography(getGeographyFromConnectionCreateOrWorkspace(connectionCreate))
         .withBreakingChange(false)
         .withNonBreakingChangesPreference(
-            ApiPojoConverters.toPersistenceNonBreakingChangesPreference(connectionCreate.getNonBreakingChangesPreference()));
+            ApiPojoConverters.toPersistenceNonBreakingChangesPreference(connectionCreate.getNonBreakingChangesPreference()))
+        .withPuentePolicy(connectionCreate.getPuentePolicy() == null ? null
+            : Jsons.convertValue(connectionCreate.getPuentePolicy(), io.airbyte.config.PuenteConnectionPolicy.class));
     if (connectionCreate.getResourceRequirements() != null) {
       standardSync.withResourceRequirements(ApiPojoConverters.resourceRequirementsToInternal(connectionCreate.getResourceRequirements()));
+    }
+    if (standardSync.getPuentePolicy() == null
+        && PAPER_SOURCE_DEFINITION_ID.equals(sourceConnection.getSourceDefinitionId())
+        && PAPER_DESTINATION_DEFINITION_ID.equals(destinationConnection.getDestinationDefinitionId())) {
+      standardSync.withPuentePolicy(defaultPaperPolicy());
     }
 
     // TODO Undesirable behavior: sending a null configured catalog should not be valid?
@@ -192,6 +206,30 @@ public class ConnectionsHandler {
     }
 
     return buildConnectionRead(connectionId);
+  }
+
+  private static PuenteConnectionPolicy defaultPaperPolicy() {
+    return new PuenteConnectionPolicy()
+        .withMode(PuenteConnectionPolicy.Mode.PAPER)
+        .withRows(List.of(
+            new PuenteCrosswalkRow()
+                .withSourceSymbol("DAX")
+                .withCanonicalInstrument("DE40")
+                .withDestinationSymbol("GER40")
+                .withContractFactor(1D)
+                .withScale(1D),
+            new PuenteCrosswalkRow()
+                .withSourceSymbol("DJ")
+                .withCanonicalInstrument("US30")
+                .withDestinationSymbol("WS30")
+                .withContractFactor(1D)
+                .withScale(1D),
+            new PuenteCrosswalkRow()
+                .withSourceSymbol("ES")
+                .withCanonicalInstrument("US500")
+                .withExclusionReason("future_not_supported")
+                .withContractFactor(1D)
+                .withScale(1D)));
   }
 
   private Geography getGeographyFromConnectionCreateOrWorkspace(final ConnectionCreate connectionCreate)
@@ -369,6 +407,10 @@ public class ConnectionsHandler {
     if (patch.getNonBreakingChangesPreference() != null) {
       sync.setNonBreakingChangesPreference(ApiPojoConverters.toPersistenceNonBreakingChangesPreference(patch.getNonBreakingChangesPreference()));
     }
+
+    if (patch.getPuentePolicy() != null) {
+      sync.setPuentePolicy(Jsons.convertValue(patch.getPuentePolicy(), io.airbyte.config.PuenteConnectionPolicy.class));
+    }
   }
 
   private void validateConnectionPatch(final WorkspaceHelper workspaceHelper, final StandardSync persistedSync, final ConnectionUpdate patch) {
@@ -453,6 +495,49 @@ public class ConnectionsHandler {
   public ConnectionRead getConnection(final UUID connectionId)
       throws JsonValidationException, IOException, ConfigNotFoundException {
     return buildConnectionRead(connectionId);
+  }
+
+  public PuenteJournalReadList listPuenteJournal(final UUID connectionId) throws IOException {
+    final List<PuenteJournalRead> operations = configRepository.listPuenteJournal(connectionId).stream()
+        .map(row -> new PuenteJournalRead()
+            .id(row.id())
+            .connectionId(row.connectionId())
+            .sourceFillId(row.sourceFillId())
+            .destinationId(row.destinationId())
+            .status(PuenteJournalRead.StatusEnum.fromValue(row.status()))
+            .reason(row.reason())
+            .sourceRecord(row.sourceRecord() == null ? null : Jsons.convertValue(row.sourceRecord(), Map.class))
+            .outboundRequest(row.outboundRequest() == null ? null : Jsons.convertValue(row.outboundRequest(), Map.class))
+            .destinationResponse(row.destinationResponse() == null ? null : Jsons.convertValue(row.destinationResponse(), Map.class))
+            .logs(row.logs() == null ? null : Jsons.convertValue(row.logs(), List.class))
+            .originAt(row.originAt())
+            .receivedAt(row.receivedAt())
+            .sentAt(row.sentAt())
+            .replicaAt(row.replicaAt())
+            .desfaseMs(row.desfaseMs())
+            .attempt(row.attempt()))
+        .toList();
+    return new PuenteJournalReadList().operations(operations);
+  }
+
+  public void appendPuenteJournal(final PuenteJournalRead operation) throws IOException {
+    configRepository.appendPuenteJournal(new JournalRecord(
+        operation.getId(),
+        operation.getConnectionId(),
+        operation.getSourceFillId(),
+        operation.getDestinationId(),
+        operation.getStatus().value(),
+        operation.getReason(),
+        operation.getSourceRecord() == null ? null : Jsons.jsonNode(operation.getSourceRecord()),
+        operation.getOutboundRequest() == null ? null : Jsons.jsonNode(operation.getOutboundRequest()),
+        operation.getDestinationResponse() == null ? null : Jsons.jsonNode(operation.getDestinationResponse()),
+        operation.getLogs() == null ? Jsons.jsonNode(List.of()) : Jsons.jsonNode(operation.getLogs()),
+        operation.getOriginAt(),
+        operation.getReceivedAt(),
+        operation.getSentAt(),
+        operation.getReplicaAt(),
+        operation.getDesfaseMs(),
+        operation.getAttempt()));
   }
 
   public CatalogDiff getDiff(final AirbyteCatalog oldCatalog, final AirbyteCatalog newCatalog, final ConfiguredAirbyteCatalog configuredCatalog)

@@ -67,13 +67,16 @@ import io.airbyte.config.StandardSync.Status;
 import io.airbyte.config.StandardWorkspace;
 import io.airbyte.config.persistence.ConfigNotFoundException;
 import io.airbyte.config.persistence.ConfigRepository;
+import io.airbyte.config.persistence.PuenteOperationJournalPersistence.JournalRecord;
 import io.airbyte.persistence.job.WorkspaceHelper;
 import io.airbyte.protocol.models.ConfiguredAirbyteCatalog;
 import io.airbyte.validation.json.JsonValidationException;
 import io.airbyte.workers.helper.ConnectionHelper;
 import java.io.IOException;
+import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -185,6 +188,40 @@ class ConnectionsHandlerTest {
     when(workspaceHelper.getWorkspaceForDestinationIdIgnoreExceptions(destinationId)).thenReturn(workspaceId);
     when(workspaceHelper.getWorkspaceForOperationIdIgnoreExceptions(operationId)).thenReturn(workspaceId);
     when(workspaceHelper.getWorkspaceForOperationIdIgnoreExceptions(otherOperationId)).thenReturn(workspaceId);
+    connectionsHandler = new ConnectionsHandler(
+        configRepository, uuidGenerator, workspaceHelper, trackingClient, eventRunner, connectionHelper);
+  }
+
+  @Test
+  void listPuenteJournalMapsPersistedOperationsToApi() throws IOException {
+    final UUID journalId = UUID.randomUUID();
+    final OffsetDateTime originAt = OffsetDateTime.parse("2026-01-01T00:00:00Z");
+    final OffsetDateTime replicaAt = originAt.plusSeconds(1);
+    when(configRepository.listPuenteJournal(connectionId)).thenReturn(List.of(new JournalRecord(
+        journalId,
+        connectionId,
+        "fill-1",
+        destinationId,
+        "accepted",
+        null,
+        Jsons.jsonNode(Map.of("symbol", "DAX")),
+        Jsons.jsonNode(Map.of("symbol", "GER40")),
+        Jsons.jsonNode(Map.of("accepted", true)),
+        Jsons.jsonNode(List.of("accepted")),
+        originAt,
+        originAt,
+        originAt,
+        replicaAt,
+        1000L,
+        1)));
+
+    final var result = connectionsHandler.listPuenteJournal(connectionId);
+
+    assertEquals(1, result.getOperations().size());
+    assertEquals(journalId, result.getOperations().get(0).getId());
+    assertEquals("fill-1", result.getOperations().get(0).getSourceFillId());
+    assertEquals(1000L, result.getOperations().get(0).getDesfaseMs());
+    assertEquals(List.of("accepted"), result.getOperations().get(0).getLogs());
   }
 
   @Nested

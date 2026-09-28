@@ -1329,6 +1329,47 @@ paths:
           $ref: "#/components/responses/NotFoundResponse"
         "422":
           $ref: "#/components/responses/InvalidInputResponse"
+  /v1/connections/puente/journal:
+    post:
+      tags:
+        - connection
+      summary: List Puente operation journal rows for a connection
+      operationId: listPuenteJournal
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectionIdRequestBody"
+        required: true
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PuenteJournalReadList"
+        "404":
+          $ref: "#/components/responses/NotFoundResponse"
+        "422":
+          $ref: "#/components/responses/InvalidInputResponse"
+  /v1/connections/puente/journal/append:
+    post:
+      tags:
+        - connection
+        - internal
+      summary: Append one Puente operation attempt
+      operationId: appendPuenteJournal
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PuenteJournalRead"
+        required: true
+      responses:
+        "204":
+          description: Journal row appended
+        "422":
+          $ref: "#/components/responses/InvalidInputResponse"
   /v1/state/get:
     post:
       tags:
@@ -3290,6 +3331,8 @@ components:
           type: boolean
         nonBreakingChangesPreference:
           $ref: "#/components/schemas/NonBreakingChangesPreference"
+        puentePolicy:
+          $ref: "#/components/schemas/PuenteConnectionPolicy"
     WebBackendConnectionCreate:
       type: object
       required:
@@ -3341,6 +3384,8 @@ components:
           $ref: "#/components/schemas/Geography"
         nonBreakingChangesPreference:
           $ref: "#/components/schemas/NonBreakingChangesPreference"
+        puentePolicy:
+          $ref: "#/components/schemas/PuenteConnectionPolicy"
     ConnectionStateCreateOrUpdate:
       type: object
       required:
@@ -3399,6 +3444,8 @@ components:
           $ref: "#/components/schemas/NonBreakingChangesPreference"
         breakingChange:
           type: boolean
+        puentePolicy:
+          $ref: "#/components/schemas/PuenteConnectionPolicy"
     WebBackendConnectionUpdate:
       type: object
       description: Used to apply a patch-style update to a connection, which means that null properties remain unchanged
@@ -3447,6 +3494,8 @@ components:
           type: boolean
         nonBreakingChangesPreference:
           $ref: "#/components/schemas/NonBreakingChangesPreference"
+        puentePolicy:
+          $ref: "#/components/schemas/PuenteConnectionPolicy"
     ConnectionRead:
       type: object
       required:
@@ -3503,6 +3552,136 @@ components:
           type: boolean
         nonBreakingChangesPreference:
           $ref: "#/components/schemas/NonBreakingChangesPreference"
+        puentePolicy:
+          $ref: "#/components/schemas/PuenteConnectionPolicy"
+    PuenteConnectionPolicy:
+      type: object
+      required:
+        - mode
+        - rows
+      properties:
+        mode:
+          type: string
+          enum:
+            - paper
+            - live
+        liveQuota:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/PuenteCrosswalkRow"
+    PuenteCrosswalkRow:
+      type: object
+      required:
+        - sourceSymbol
+        - canonicalInstrument
+        - contractFactor
+        - scale
+      properties:
+        sourceSymbol:
+          type: string
+        canonicalInstrument:
+          type: string
+        destinationSymbol:
+          type: string
+          nullable: true
+        exclusionReason:
+          type: string
+          nullable: true
+        contractFactor:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
+        scale:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
+    PuenteJournalRead:
+      type: object
+      required:
+        - id
+        - connectionId
+        - destinationId
+        - status
+        - logs
+        - receivedAt
+        - replicaAt
+        - attempt
+      properties:
+        id:
+          type: string
+          format: uuid
+        connectionId:
+          type: string
+          format: uuid
+        sourceFillId:
+          type: string
+          nullable: true
+        destinationId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - accepted
+            - rejected
+            - duplicate
+            - skipped
+        reason:
+          type: string
+          nullable: true
+        sourceRecord:
+          type: object
+          additionalProperties: true
+          nullable: true
+        outboundRequest:
+          type: object
+          additionalProperties: true
+          nullable: true
+        destinationResponse:
+          type: object
+          additionalProperties: true
+          nullable: true
+        logs:
+          type: array
+          items:
+            type: string
+        originAt:
+          type: string
+          format: date-time
+          nullable: true
+        receivedAt:
+          type: string
+          format: date-time
+        sentAt:
+          type: string
+          format: date-time
+          nullable: true
+        replicaAt:
+          type: string
+          format: date-time
+        desfaseMs:
+          type: integer
+          format: int64
+          nullable: true
+        attempt:
+          type: integer
+          format: int32
+    PuenteJournalReadList:
+      type: object
+      required:
+        - operations
+      properties:
+        operations:
+          type: array
+          items:
+            $ref: "#/components/schemas/PuenteJournalRead"
     SchemaChange:
       enum:
         - no_change
@@ -4943,6 +5122,8 @@ components:
           type: boolean
         nonBreakingChangesPreference:
           $ref: "#/components/schemas/NonBreakingChangesPreference"
+        puentePolicy:
+          $ref: "#/components/schemas/PuenteConnectionPolicy"
     NonBreakingChangesPreference:
       enum:
         - ignore

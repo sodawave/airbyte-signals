@@ -115,6 +115,7 @@ class BaseConfigDatabaseTest {
               actor_definition,
               actor_definition_workspace_grant,
               actor_oauth_parameter,
+              puente_operation_journal,
               connection,
               connection_operation,
               operation,

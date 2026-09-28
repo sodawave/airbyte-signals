@@ -37,12 +37,16 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.jooq.DSLContext;
+import org.jooq.Field;
 import org.jooq.JSONB;
 import org.jooq.Record;
 import org.jooq.Result;
 import org.jooq.SelectJoinStep;
+import org.jooq.impl.DSL;
 
 public class StandardSyncPersistence {
+
+  private static final Field<JSONB> PUENTE_POLICY = DSL.field(DSL.name("connection", "puente_policy"), JSONB.class);
 
   private record StandardSyncIdsWithProtocolVersions(
                                                      UUID standardSyncId,
@@ -208,6 +212,7 @@ public class StandardSyncPersistence {
               io.airbyte.db.instance.configs.jooq.generated.enums.GeographyType.class).orElseThrow())
           .set(CONNECTION.NON_BREAKING_CHANGE_PREFERENCE, standardSync.getNonBreakingChangesPreference().value())
           .set(CONNECTION.NOTIFY_SCHEMA_CHANGES, standardSync.getNotifySchemaChanges())
+          .set(PUENTE_POLICY, standardSync.getPuentePolicy() == null ? null : JSONB.valueOf(Jsons.serialize(standardSync.getPuentePolicy())))
           .where(CONNECTION.ID.eq(standardSync.getConnectionId()))
           .execute();
 
@@ -255,6 +260,7 @@ public class StandardSyncPersistence {
           .set(CONNECTION.NON_BREAKING_CHANGE_PREFERENCE,
               standardSync.getNonBreakingChangesPreference() == null ? NonBreakingChangesPreference.IGNORE.value()
                   : standardSync.getNonBreakingChangesPreference().value())
+          .set(PUENTE_POLICY, standardSync.getPuentePolicy() == null ? null : JSONB.valueOf(Jsons.serialize(standardSync.getPuentePolicy())))
           .set(CONNECTION.CREATED_AT, timestamp)
           .set(CONNECTION.UPDATED_AT, timestamp)
           .execute();

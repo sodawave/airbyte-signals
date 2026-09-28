@@ -132,3 +132,6 @@ properties:
     enum:
       - ignore
       - disable
+  puentePolicy:
+    description: Frozen, resolved Puente crosswalk and quota policy for this connection.
+    "$ref": PuenteConnectionPolicy.yaml

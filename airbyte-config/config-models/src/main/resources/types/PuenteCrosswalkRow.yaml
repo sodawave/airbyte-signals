@@ -1,0 +1,31 @@
+---
+"$schema": http://json-schema.org/draft-07/schema#
+"$id": https://github.com/airbytehq/airbyte/blob/master/airbyte-config/config-models/src/main/resources/types/PuenteCrosswalkRow.yaml
+title: PuenteCrosswalkRow
+description: Resolved source-to-destination instrument mapping stored on a connection.
+type: object
+required:
+  - sourceSymbol
+  - canonicalInstrument
+  - contractFactor
+  - scale
+additionalProperties: false
+properties:
+  sourceSymbol:
+    type: string
+    minLength: 1
+  canonicalInstrument:
+    type: string
+    minLength: 1
+  destinationSymbol:
+    type: string
+    minLength: 1
+  exclusionReason:
+    type: string
+    minLength: 1
+  contractFactor:
+    type: number
+    exclusiveMinimum: 0
+  scale:
+    type: number
+    exclusiveMinimum: 0

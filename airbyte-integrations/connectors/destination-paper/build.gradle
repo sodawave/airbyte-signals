@@ -1,0 +1,23 @@
+plugins {
+    id 'airbyte-python'
+    id 'airbyte-docker'
+}
+
+airbytePython {
+    moduleDirectory 'destination_paper'
+}
+
+tasks.named('integrationTest') {
+    setDependsOn([])
+    actions.clear()
+    doLast {
+        exec {
+            workingDir projectDir
+            commandLine 'uv', 'run', '--python', '3.11',
+                '--with-editable', '.',
+                '--with-editable', '../source-paper',
+                '--with', 'pytest',
+                'pytest', 'unit_tests', 'integration_tests'
+        }
+    }
+}

@@ -19,6 +19,7 @@ import { useDeleteConnection } from "hooks/services/useConnectionHook";
 import styles from "./ConnectionSettingsPage.module.scss";
 import { SchemaUpdateNotifications } from "./SchemaUpdateNotifications";
 import { StateBlock } from "./StateBlock";
+import { PuentePanel, PuentePolicy } from "../PuentePanel/PuentePanel";
 
 export const ConnectionSettingsPageInner: React.FC = () => {
   const { connection } = useConnectionEditService();
@@ -32,6 +33,10 @@ export const ConnectionSettingsPageInner: React.FC = () => {
 
   return (
     <div className={styles.container}>
+      <PuentePanel
+        connectionId={connection.connectionId}
+        policy={(connection as typeof connection & { puentePolicy?: PuentePolicy }).puentePolicy}
+      />
       {canSendSchemaUpdateNotifications && <SchemaUpdateNotifications />}
       {canUpdateDataResidency && <UpdateConnectionDataResidency />}
       <DeleteBlock type="connection" onDelete={onDelete} />

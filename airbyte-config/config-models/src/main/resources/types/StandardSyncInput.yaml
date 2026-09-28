@@ -74,3 +74,6 @@ properties:
     description: The id of the connection associated with this sync
     type: string
     format: uuid
+  puentePolicy:
+    description: Frozen Puente policy copied from the connection when the job input is generated.
+    "$ref": PuenteConnectionPolicy.yaml

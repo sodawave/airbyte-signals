@@ -219,11 +219,13 @@ font-style: italic;
   </ul>
   <h4><a href="#Connection">Connection</a></h4>
   <ul>
+  <li><a href="#appendPuenteJournal"><code><span class="http-method">post</span> /v1/connections/puente/journal/append</code></a></li>
   <li><a href="#createConnection"><code><span class="http-method">post</span> /v1/connections/create</code></a></li>
   <li><a href="#deleteConnection"><code><span class="http-method">post</span> /v1/connections/delete</code></a></li>
   <li><a href="#getConnection"><code><span class="http-method">post</span> /v1/connections/get</code></a></li>
   <li><a href="#listAllConnectionsForWorkspace"><code><span class="http-method">post</span> /v1/connections/list_all</code></a></li>
   <li><a href="#listConnectionsForWorkspace"><code><span class="http-method">post</span> /v1/connections/list</code></a></li>
+  <li><a href="#listPuenteJournal"><code><span class="http-method">post</span> /v1/connections/puente/journal</code></a></li>
   <li><a href="#resetConnection"><code><span class="http-method">post</span> /v1/connections/reset</code></a></li>
   <li><a href="#searchConnections"><code><span class="http-method">post</span> /v1/connections/search</code></a></li>
   <li><a href="#syncConnection"><code><span class="http-method">post</span> /v1/connections/sync</code></a></li>
@@ -271,6 +273,7 @@ font-style: italic;
   </ul>
   <h4><a href="#Internal">Internal</a></h4>
   <ul>
+  <li><a href="#appendPuenteJournal"><code><span class="http-method">post</span> /v1/connections/puente/journal/append</code></a></li>
   <li><a href="#createOrUpdateState"><code><span class="http-method">post</span> /v1/state/create_or_update</code></a></li>
   <li><a href="#getAttemptNormalizationStatusesForJob"><code><span class="http-method">post</span> /v1/jobs/get_normalization_status</code></a></li>
   <li><a href="#saveStats"><code><span class="http-method">post</span> /v1/attempt/save_stats</code></a></li>
@@ -541,6 +544,51 @@ font-style: italic;
   </div> <!-- method -->
   <hr/>
   <h1><a name="Connection">Connection</a></h1>
+  <div class="method"><a name="appendPuenteJournal"/>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="post"><code class="huge"><span class="http-method">post</span> /v1/connections/puente/journal/append</code></pre></div>
+    <div class="method-summary">Append one Puente operation attempt (<span class="nickname">appendPuenteJournal</span>)</div>
+    <div class="method-notes"></div>
+
+
+    <h3 class="field-label">Consumes</h3>
+    This API call consumes the following media types via the <span class="header">Content-Type</span> request header:
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Request body</h3>
+    <div class="field-items">
+      <div class="param">PuenteJournalRead <a href="#PuenteJournalRead">PuenteJournalRead</a> (required)</div>
+
+      <div class="param-desc"><span class="param-type">Body Parameter</span> &mdash;  </div>
+
+    </div>  <!-- field-items -->
+
+
+
+
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">204</h4>
+    Journal row appended
+        <a href="#"></a>
+    <h4 class="field-label">422</h4>
+    Input failed validation
+        <a href="#InvalidInputExceptionInfo">InvalidInputExceptionInfo</a>
+  </div> <!-- method -->
+  <hr/>
   <div class="method"><a name="createConnection"/>
     <div class="method-path">
     <a class="up" href="#__Methods">Up</a>
@@ -653,6 +701,25 @@ font-style: italic;
       "units" : 6,
       "timeUnit" : "minutes"
     }
+  },
+  "puentePolicy" : {
+    "mode" : "paper",
+    "liveQuota" : 0,
+    "rows" : [ {
+      "exclusionReason" : "exclusionReason",
+      "canonicalInstrument" : "canonicalInstrument",
+      "scale" : 0.5637376656633328,
+      "sourceSymbol" : "sourceSymbol",
+      "contractFactor" : 0.5962133916683182,
+      "destinationSymbol" : "destinationSymbol"
+    }, {
+      "exclusionReason" : "exclusionReason",
+      "canonicalInstrument" : "canonicalInstrument",
+      "scale" : 0.5637376656633328,
+      "sourceSymbol" : "sourceSymbol",
+      "contractFactor" : 0.5962133916683182,
+      "destinationSymbol" : "destinationSymbol"
+    } ]
   }
 }</code></pre>
 
@@ -832,6 +899,25 @@ font-style: italic;
       "units" : 6,
       "timeUnit" : "minutes"
     }
+  },
+  "puentePolicy" : {
+    "mode" : "paper",
+    "liveQuota" : 0,
+    "rows" : [ {
+      "exclusionReason" : "exclusionReason",
+      "canonicalInstrument" : "canonicalInstrument",
+      "scale" : 0.5637376656633328,
+      "sourceSymbol" : "sourceSymbol",
+      "contractFactor" : 0.5962133916683182,
+      "destinationSymbol" : "destinationSymbol"
+    }, {
+      "exclusionReason" : "exclusionReason",
+      "canonicalInstrument" : "canonicalInstrument",
+      "scale" : 0.5637376656633328,
+      "sourceSymbol" : "sourceSymbol",
+      "contractFactor" : 0.5962133916683182,
+      "destinationSymbol" : "destinationSymbol"
+    } ]
   }
 }</code></pre>
 
@@ -967,6 +1053,25 @@ font-style: italic;
         "units" : 6,
         "timeUnit" : "minutes"
       }
+    },
+    "puentePolicy" : {
+      "mode" : "paper",
+      "liveQuota" : 0,
+      "rows" : [ {
+        "exclusionReason" : "exclusionReason",
+        "canonicalInstrument" : "canonicalInstrument",
+        "scale" : 0.5637376656633328,
+        "sourceSymbol" : "sourceSymbol",
+        "contractFactor" : 0.5962133916683182,
+        "destinationSymbol" : "destinationSymbol"
+      }, {
+        "exclusionReason" : "exclusionReason",
+        "canonicalInstrument" : "canonicalInstrument",
+        "scale" : 0.5637376656633328,
+        "sourceSymbol" : "sourceSymbol",
+        "contractFactor" : 0.5962133916683182,
+        "destinationSymbol" : "destinationSymbol"
+      } ]
     }
   }, {
     "sourceId" : "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
@@ -1045,6 +1150,25 @@ font-style: italic;
         "units" : 6,
         "timeUnit" : "minutes"
       }
+    },
+    "puentePolicy" : {
+      "mode" : "paper",
+      "liveQuota" : 0,
+      "rows" : [ {
+        "exclusionReason" : "exclusionReason",
+        "canonicalInstrument" : "canonicalInstrument",
+        "scale" : 0.5637376656633328,
+        "sourceSymbol" : "sourceSymbol",
+        "contractFactor" : 0.5962133916683182,
+        "destinationSymbol" : "destinationSymbol"
+      }, {
+        "exclusionReason" : "exclusionReason",
+        "canonicalInstrument" : "canonicalInstrument",
+        "scale" : 0.5637376656633328,
+        "sourceSymbol" : "sourceSymbol",
+        "contractFactor" : 0.5962133916683182,
+        "destinationSymbol" : "destinationSymbol"
+      } ]
     }
   } ]
 }</code></pre>
@@ -1181,6 +1305,25 @@ font-style: italic;
         "units" : 6,
         "timeUnit" : "minutes"
       }
+    },
+    "puentePolicy" : {
+      "mode" : "paper",
+      "liveQuota" : 0,
+      "rows" : [ {
+        "exclusionReason" : "exclusionReason",
+        "canonicalInstrument" : "canonicalInstrument",
+        "scale" : 0.5637376656633328,
+        "sourceSymbol" : "sourceSymbol",
+        "contractFactor" : 0.5962133916683182,
+        "destinationSymbol" : "destinationSymbol"
+      }, {
+        "exclusionReason" : "exclusionReason",
+        "canonicalInstrument" : "canonicalInstrument",
+        "scale" : 0.5637376656633328,
+        "sourceSymbol" : "sourceSymbol",
+        "contractFactor" : 0.5962133916683182,
+        "destinationSymbol" : "destinationSymbol"
+      } ]
     }
   }, {
     "sourceId" : "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
@@ -1259,6 +1402,25 @@ font-style: italic;
         "units" : 6,
         "timeUnit" : "minutes"
       }
+    },
+    "puentePolicy" : {
+      "mode" : "paper",
+      "liveQuota" : 0,
+      "rows" : [ {
+        "exclusionReason" : "exclusionReason",
+        "canonicalInstrument" : "canonicalInstrument",
+        "scale" : 0.5637376656633328,
+        "sourceSymbol" : "sourceSymbol",
+        "contractFactor" : 0.5962133916683182,
+        "destinationSymbol" : "destinationSymbol"
+      }, {
+        "exclusionReason" : "exclusionReason",
+        "canonicalInstrument" : "canonicalInstrument",
+        "scale" : 0.5637376656633328,
+        "sourceSymbol" : "sourceSymbol",
+        "contractFactor" : 0.5962133916683182,
+        "destinationSymbol" : "destinationSymbol"
+      } ]
     }
   } ]
 }</code></pre>
@@ -1274,6 +1436,110 @@ font-style: italic;
     <h4 class="field-label">200</h4>
     Successful operation
         <a href="#ConnectionReadList">ConnectionReadList</a>
+    <h4 class="field-label">404</h4>
+    Object with given id was not found.
+        <a href="#NotFoundKnownExceptionInfo">NotFoundKnownExceptionInfo</a>
+    <h4 class="field-label">422</h4>
+    Input failed validation
+        <a href="#InvalidInputExceptionInfo">InvalidInputExceptionInfo</a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="listPuenteJournal"/>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="post"><code class="huge"><span class="http-method">post</span> /v1/connections/puente/journal</code></pre></div>
+    <div class="method-summary">List Puente operation journal rows for a connection (<span class="nickname">listPuenteJournal</span>)</div>
+    <div class="method-notes"></div>
+
+
+    <h3 class="field-label">Consumes</h3>
+    This API call consumes the following media types via the <span class="header">Content-Type</span> request header:
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Request body</h3>
+    <div class="field-items">
+      <div class="param">ConnectionIdRequestBody <a href="#ConnectionIdRequestBody">ConnectionIdRequestBody</a> (required)</div>
+
+      <div class="param-desc"><span class="param-type">Body Parameter</span> &mdash;  </div>
+
+    </div>  <!-- field-items -->
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#PuenteJournalReadList">PuenteJournalReadList</a>
+
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "operations" : [ {
+    "outboundRequest" : {
+      "key" : ""
+    },
+    "replicaAt" : "2000-01-23T04:56:07.000+00:00",
+    "sourceFillId" : "sourceFillId",
+    "reason" : "reason",
+    "originAt" : "2000-01-23T04:56:07.000+00:00",
+    "sentAt" : "2000-01-23T04:56:07.000+00:00",
+    "destinationId" : "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
+    "receivedAt" : "2000-01-23T04:56:07.000+00:00",
+    "attempt" : 6,
+    "connectionId" : "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
+    "sourceRecord" : {
+      "key" : ""
+    },
+    "id" : "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
+    "desfaseMs" : 0,
+    "logs" : [ "logs", "logs" ],
+    "destinationResponse" : {
+      "key" : ""
+    },
+    "status" : "accepted"
+  }, {
+    "outboundRequest" : {
+      "key" : ""
+    },
+    "replicaAt" : "2000-01-23T04:56:07.000+00:00",
+    "sourceFillId" : "sourceFillId",
+    "reason" : "reason",
+    "originAt" : "2000-01-23T04:56:07.000+00:00",
+    "sentAt" : "2000-01-23T04:56:07.000+00:00",
+    "destinationId" : "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
+    "receivedAt" : "2000-01-23T04:56:07.000+00:00",
+    "attempt" : 6,
+    "connectionId" : "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
+    "sourceRecord" : {
+      "key" : ""
+    },
+    "id" : "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
+    "desfaseMs" : 0,
+    "logs" : [ "logs", "logs" ],
+    "destinationResponse" : {
+      "key" : ""
+    },
+    "status" : "accepted"
+  } ]
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    Successful operation
+        <a href="#PuenteJournalReadList">PuenteJournalReadList</a>
     <h4 class="field-label">404</h4>
     Object with given id was not found.
         <a href="#NotFoundKnownExceptionInfo">NotFoundKnownExceptionInfo</a>
@@ -1587,6 +1853,25 @@ font-style: italic;
         "units" : 6,
         "timeUnit" : "minutes"
       }
+    },
+    "puentePolicy" : {
+      "mode" : "paper",
+      "liveQuota" : 0,
+      "rows" : [ {
+        "exclusionReason" : "exclusionReason",
+        "canonicalInstrument" : "canonicalInstrument",
+        "scale" : 0.5637376656633328,
+        "sourceSymbol" : "sourceSymbol",
+        "contractFactor" : 0.5962133916683182,
+        "destinationSymbol" : "destinationSymbol"
+      }, {
+        "exclusionReason" : "exclusionReason",
+        "canonicalInstrument" : "canonicalInstrument",
+        "scale" : 0.5637376656633328,
+        "sourceSymbol" : "sourceSymbol",
+        "contractFactor" : 0.5962133916683182,
+        "destinationSymbol" : "destinationSymbol"
+      } ]
     }
   }, {
     "sourceId" : "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
@@ -1665,6 +1950,25 @@ font-style: italic;
         "units" : 6,
         "timeUnit" : "minutes"
       }
+    },
+    "puentePolicy" : {
+      "mode" : "paper",
+      "liveQuota" : 0,
+      "rows" : [ {
+        "exclusionReason" : "exclusionReason",
+        "canonicalInstrument" : "canonicalInstrument",
+        "scale" : 0.5637376656633328,
+        "sourceSymbol" : "sourceSymbol",
+        "contractFactor" : 0.5962133916683182,
+        "destinationSymbol" : "destinationSymbol"
+      }, {
+        "exclusionReason" : "exclusionReason",
+        "canonicalInstrument" : "canonicalInstrument",
+        "scale" : 0.5637376656633328,
+        "sourceSymbol" : "sourceSymbol",
+        "contractFactor" : 0.5962133916683182,
+        "destinationSymbol" : "destinationSymbol"
+      } ]
     }
   } ]
 }</code></pre>
@@ -1992,6 +2296,25 @@ containing the updated stream needs to be sent.</div>
       "units" : 6,
       "timeUnit" : "minutes"
     }
+  },
+  "puentePolicy" : {
+    "mode" : "paper",
+    "liveQuota" : 0,
+    "rows" : [ {
+      "exclusionReason" : "exclusionReason",
+      "canonicalInstrument" : "canonicalInstrument",
+      "scale" : 0.5637376656633328,
+      "sourceSymbol" : "sourceSymbol",
+      "contractFactor" : 0.5962133916683182,
+      "destinationSymbol" : "destinationSymbol"
+    }, {
+      "exclusionReason" : "exclusionReason",
+      "canonicalInstrument" : "canonicalInstrument",
+      "scale" : 0.5637376656633328,
+      "sourceSymbol" : "sourceSymbol",
+      "contractFactor" : 0.5962133916683182,
+      "destinationSymbol" : "destinationSymbol"
+    } ]
   }
 }</code></pre>
 
@@ -3978,6 +4301,51 @@ containing the updated stream needs to be sent.</div>
   </div> <!-- method -->
   <hr/>
   <h1><a name="Internal">Internal</a></h1>
+  <div class="method"><a name="appendPuenteJournal"/>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="post"><code class="huge"><span class="http-method">post</span> /v1/connections/puente/journal/append</code></pre></div>
+    <div class="method-summary">Append one Puente operation attempt (<span class="nickname">appendPuenteJournal</span>)</div>
+    <div class="method-notes"></div>
+
+
+    <h3 class="field-label">Consumes</h3>
+    This API call consumes the following media types via the <span class="header">Content-Type</span> request header:
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Request body</h3>
+    <div class="field-items">
+      <div class="param">PuenteJournalRead <a href="#PuenteJournalRead">PuenteJournalRead</a> (required)</div>
+
+      <div class="param-desc"><span class="param-type">Body Parameter</span> &mdash;  </div>
+
+    </div>  <!-- field-items -->
+
+
+
+
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">204</h4>
+    Journal row appended
+        <a href="#"></a>
+    <h4 class="field-label">422</h4>
+    Input failed validation
+        <a href="#InvalidInputExceptionInfo">InvalidInputExceptionInfo</a>
+  </div> <!-- method -->
+  <hr/>
   <div class="method"><a name="createOrUpdateState"/>
     <div class="method-path">
     <a class="up" href="#__Methods">Up</a>
@@ -9003,7 +9371,26 @@ containing the updated stream needs to be sent.</div>
     } ]
   },
   "connectionId" : "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
-  "operationIds" : [ null, null ]
+  "operationIds" : [ null, null ],
+  "puentePolicy" : {
+    "mode" : "paper",
+    "liveQuota" : 0,
+    "rows" : [ {
+      "exclusionReason" : "exclusionReason",
+      "canonicalInstrument" : "canonicalInstrument",
+      "scale" : 0.5637376656633328,
+      "sourceSymbol" : "sourceSymbol",
+      "contractFactor" : 0.5962133916683182,
+      "destinationSymbol" : "destinationSymbol"
+    }, {
+      "exclusionReason" : "exclusionReason",
+      "canonicalInstrument" : "canonicalInstrument",
+      "scale" : 0.5637376656633328,
+      "sourceSymbol" : "sourceSymbol",
+      "contractFactor" : 0.5962133916683182,
+      "destinationSymbol" : "destinationSymbol"
+    } ]
+  }
 }</code></pre>
 
     <h3 class="field-label">Produces</h3>
@@ -9253,7 +9640,26 @@ containing the updated stream needs to be sent.</div>
     } ]
   },
   "connectionId" : "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
-  "operationIds" : [ null, null ]
+  "operationIds" : [ null, null ],
+  "puentePolicy" : {
+    "mode" : "paper",
+    "liveQuota" : 0,
+    "rows" : [ {
+      "exclusionReason" : "exclusionReason",
+      "canonicalInstrument" : "canonicalInstrument",
+      "scale" : 0.5637376656633328,
+      "sourceSymbol" : "sourceSymbol",
+      "contractFactor" : 0.5962133916683182,
+      "destinationSymbol" : "destinationSymbol"
+    }, {
+      "exclusionReason" : "exclusionReason",
+      "canonicalInstrument" : "canonicalInstrument",
+      "scale" : 0.5637376656633328,
+      "sourceSymbol" : "sourceSymbol",
+      "contractFactor" : 0.5962133916683182,
+      "destinationSymbol" : "destinationSymbol"
+    } ]
+  }
 }</code></pre>
 
     <h3 class="field-label">Produces</h3>
@@ -9731,7 +10137,26 @@ containing the updated stream needs to be sent.</div>
     } ]
   },
   "connectionId" : "046b6c7f-0b8a-43b9-b35d-6489e6daee91",
-  "operationIds" : [ null, null ]
+  "operationIds" : [ null, null ],
+  "puentePolicy" : {
+    "mode" : "paper",
+    "liveQuota" : 0,
+    "rows" : [ {
+      "exclusionReason" : "exclusionReason",
+      "canonicalInstrument" : "canonicalInstrument",
+      "scale" : 0.5637376656633328,
+      "sourceSymbol" : "sourceSymbol",
+      "contractFactor" : 0.5962133916683182,
+      "destinationSymbol" : "destinationSymbol"
+    }, {
+      "exclusionReason" : "exclusionReason",
+      "canonicalInstrument" : "canonicalInstrument",
+      "scale" : 0.5637376656633328,
+      "sourceSymbol" : "sourceSymbol",
+      "contractFactor" : 0.5962133916683182,
+      "destinationSymbol" : "destinationSymbol"
+    } ]
+  }
 }</code></pre>
 
     <h3 class="field-label">Produces</h3>
@@ -10627,6 +11052,10 @@ containing the updated stream needs to be sent.</div>
     <li><a href="#PrivateDestinationDefinitionReadList"><code>PrivateDestinationDefinitionReadList</code> - </a></li>
     <li><a href="#PrivateSourceDefinitionRead"><code>PrivateSourceDefinitionRead</code> - </a></li>
     <li><a href="#PrivateSourceDefinitionReadList"><code>PrivateSourceDefinitionReadList</code> - </a></li>
+    <li><a href="#PuenteConnectionPolicy"><code>PuenteConnectionPolicy</code> - </a></li>
+    <li><a href="#PuenteCrosswalkRow"><code>PuenteCrosswalkRow</code> - </a></li>
+    <li><a href="#PuenteJournalRead"><code>PuenteJournalRead</code> - </a></li>
+    <li><a href="#PuenteJournalReadList"><code>PuenteJournalReadList</code> - </a></li>
     <li><a href="#ReleaseStage"><code>ReleaseStage</code> - </a></li>
     <li><a href="#ResetConfig"><code>ResetConfig</code> - </a></li>
     <li><a href="#ResourceRequirements"><code>ResourceRequirements</code> - </a></li>
@@ -10954,6 +11383,7 @@ containing the updated stream needs to be sent.</div>
 <div class="param">geography (optional)</div><div class="param-desc"><span class="param-type"><a href="#Geography">Geography</a></span>  </div>
 <div class="param">notifySchemaChanges (optional)</div><div class="param-desc"><span class="param-type"><a href="#boolean">Boolean</a></span>  </div>
 <div class="param">nonBreakingChangesPreference (optional)</div><div class="param-desc"><span class="param-type"><a href="#NonBreakingChangesPreference">NonBreakingChangesPreference</a></span>  </div>
+<div class="param">puentePolicy (optional)</div><div class="param-desc"><span class="param-type"><a href="#PuenteConnectionPolicy">PuenteConnectionPolicy</a></span>  </div>
     </div>  <!-- field-items -->
   </div>
   <div class="model">
@@ -10986,6 +11416,7 @@ containing the updated stream needs to be sent.</div>
 <div class="param">breakingChange </div><div class="param-desc"><span class="param-type"><a href="#boolean">Boolean</a></span>  </div>
 <div class="param">notifySchemaChanges (optional)</div><div class="param-desc"><span class="param-type"><a href="#boolean">Boolean</a></span>  </div>
 <div class="param">nonBreakingChangesPreference (optional)</div><div class="param-desc"><span class="param-type"><a href="#NonBreakingChangesPreference">NonBreakingChangesPreference</a></span>  </div>
+<div class="param">puentePolicy (optional)</div><div class="param-desc"><span class="param-type"><a href="#PuenteConnectionPolicy">PuenteConnectionPolicy</a></span>  </div>
     </div>  <!-- field-items -->
   </div>
   <div class="model">
@@ -11108,6 +11539,7 @@ containing the updated stream needs to be sent.</div>
 <div class="param">notifySchemaChanges (optional)</div><div class="param-desc"><span class="param-type"><a href="#boolean">Boolean</a></span>  </div>
 <div class="param">nonBreakingChangesPreference (optional)</div><div class="param-desc"><span class="param-type"><a href="#NonBreakingChangesPreference">NonBreakingChangesPreference</a></span>  </div>
 <div class="param">breakingChange (optional)</div><div class="param-desc"><span class="param-type"><a href="#boolean">Boolean</a></span>  </div>
+<div class="param">puentePolicy (optional)</div><div class="param-desc"><span class="param-type"><a href="#PuenteConnectionPolicy">PuenteConnectionPolicy</a></span>  </div>
     </div>  <!-- field-items -->
   </div>
   <div class="model">
@@ -11842,6 +12274,60 @@ if oauth parameters were contained inside the top level, rootObject=[] If they w
     </div>  <!-- field-items -->
   </div>
   <div class="model">
+    <h3><a name="PuenteConnectionPolicy"><code>PuenteConnectionPolicy</code> - </a> <a class="up" href="#__Models">Up</a></h3>
+    <div class='model-description'></div>
+    <div class="field-items">
+      <div class="param">mode </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+        <div class="param-enum-header">Enum:</div>
+        <div class="param-enum">paper</div><div class="param-enum">live</div>
+<div class="param">liveQuota (optional)</div><div class="param-desc"><span class="param-type"><a href="#long">Long</a></span>  format: int64</div>
+<div class="param">rows </div><div class="param-desc"><span class="param-type"><a href="#PuenteCrosswalkRow">array[PuenteCrosswalkRow]</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="PuenteCrosswalkRow"><code>PuenteCrosswalkRow</code> - </a> <a class="up" href="#__Models">Up</a></h3>
+    <div class='model-description'></div>
+    <div class="field-items">
+      <div class="param">sourceSymbol </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">canonicalInstrument </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">destinationSymbol (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">exclusionReason (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">contractFactor </div><div class="param-desc"><span class="param-type"><a href="#double">Double</a></span>  format: double</div>
+<div class="param">scale </div><div class="param-desc"><span class="param-type"><a href="#double">Double</a></span>  format: double</div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="PuenteJournalRead"><code>PuenteJournalRead</code> - </a> <a class="up" href="#__Models">Up</a></h3>
+    <div class='model-description'></div>
+    <div class="field-items">
+      <div class="param">id </div><div class="param-desc"><span class="param-type"><a href="#UUID">UUID</a></span>  format: uuid</div>
+<div class="param">connectionId </div><div class="param-desc"><span class="param-type"><a href="#UUID">UUID</a></span>  format: uuid</div>
+<div class="param">sourceFillId (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">destinationId </div><div class="param-desc"><span class="param-type"><a href="#UUID">UUID</a></span>  format: uuid</div>
+<div class="param">status </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+        <div class="param-enum-header">Enum:</div>
+        <div class="param-enum">accepted</div><div class="param-enum">rejected</div><div class="param-enum">duplicate</div><div class="param-enum">skipped</div>
+<div class="param">reason (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+<div class="param">sourceRecord (optional)</div><div class="param-desc"><span class="param-type"><a href="#AnyType">map[String, oas_any_type_not_mapped]</a></span>  </div>
+<div class="param">outboundRequest (optional)</div><div class="param-desc"><span class="param-type"><a href="#AnyType">map[String, oas_any_type_not_mapped]</a></span>  </div>
+<div class="param">destinationResponse (optional)</div><div class="param-desc"><span class="param-type"><a href="#AnyType">map[String, oas_any_type_not_mapped]</a></span>  </div>
+<div class="param">logs </div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
+<div class="param">originAt (optional)</div><div class="param-desc"><span class="param-type"><a href="#DateTime">Date</a></span>  format: date-time</div>
+<div class="param">receivedAt </div><div class="param-desc"><span class="param-type"><a href="#DateTime">Date</a></span>  format: date-time</div>
+<div class="param">sentAt (optional)</div><div class="param-desc"><span class="param-type"><a href="#DateTime">Date</a></span>  format: date-time</div>
+<div class="param">replicaAt </div><div class="param-desc"><span class="param-type"><a href="#DateTime">Date</a></span>  format: date-time</div>
+<div class="param">desfaseMs (optional)</div><div class="param-desc"><span class="param-type"><a href="#long">Long</a></span>  format: int64</div>
+<div class="param">attempt </div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  format: int32</div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="PuenteJournalReadList"><code>PuenteJournalReadList</code> - </a> <a class="up" href="#__Models">Up</a></h3>
+    <div class='model-description'></div>
+    <div class="field-items">
+      <div class="param">operations </div><div class="param-desc"><span class="param-type"><a href="#PuenteJournalRead">array[PuenteJournalRead]</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
     <h3><a name="ReleaseStage"><code>ReleaseStage</code> - </a> <a class="up" href="#__Models">Up</a></h3>
     <div class='model-description'></div>
     <div class="field-items">
@@ -12234,6 +12720,7 @@ if oauth parameters were contained inside the top level, rootObject=[] If they w
 <div class="param">sourceCatalogId (optional)</div><div class="param-desc"><span class="param-type"><a href="#UUID">UUID</a></span>  format: uuid</div>
 <div class="param">geography (optional)</div><div class="param-desc"><span class="param-type"><a href="#Geography">Geography</a></span>  </div>
 <div class="param">nonBreakingChangesPreference (optional)</div><div class="param-desc"><span class="param-type"><a href="#NonBreakingChangesPreference">NonBreakingChangesPreference</a></span>  </div>
+<div class="param">puentePolicy (optional)</div><div class="param-desc"><span class="param-type"><a href="#PuenteConnectionPolicy">PuenteConnectionPolicy</a></span>  </div>
     </div>  <!-- field-items -->
   </div>
   <div class="model">
@@ -12292,6 +12779,7 @@ if oauth parameters were contained inside the top level, rootObject=[] If they w
 <div class="param">schemaChange </div><div class="param-desc"><span class="param-type"><a href="#SchemaChange">SchemaChange</a></span>  </div>
 <div class="param">notifySchemaChanges </div><div class="param-desc"><span class="param-type"><a href="#boolean">Boolean</a></span>  </div>
 <div class="param">nonBreakingChangesPreference </div><div class="param-desc"><span class="param-type"><a href="#NonBreakingChangesPreference">NonBreakingChangesPreference</a></span>  </div>
+<div class="param">puentePolicy (optional)</div><div class="param-desc"><span class="param-type"><a href="#PuenteConnectionPolicy">PuenteConnectionPolicy</a></span>  </div>
     </div>  <!-- field-items -->
   </div>
   <div class="model">
@@ -12330,6 +12818,7 @@ if oauth parameters were contained inside the top level, rootObject=[] If they w
 <div class="param">geography (optional)</div><div class="param-desc"><span class="param-type"><a href="#Geography">Geography</a></span>  </div>
 <div class="param">notifySchemaChanges (optional)</div><div class="param-desc"><span class="param-type"><a href="#boolean">Boolean</a></span>  </div>
 <div class="param">nonBreakingChangesPreference (optional)</div><div class="param-desc"><span class="param-type"><a href="#NonBreakingChangesPreference">NonBreakingChangesPreference</a></span>  </div>
+<div class="param">puentePolicy (optional)</div><div class="param-desc"><span class="param-type"><a href="#PuenteConnectionPolicy">PuenteConnectionPolicy</a></span>  </div>
     </div>  <!-- field-items -->
   </div>
   <div class="model">

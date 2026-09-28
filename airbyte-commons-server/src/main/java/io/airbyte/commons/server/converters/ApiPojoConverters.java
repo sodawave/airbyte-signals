@@ -21,6 +21,7 @@ import io.airbyte.api.model.generated.NonBreakingChangesPreference;
 import io.airbyte.api.model.generated.NormalizationDestinationDefinitionConfig;
 import io.airbyte.api.model.generated.ResourceRequirements;
 import io.airbyte.commons.enums.Enums;
+import io.airbyte.commons.json.Jsons;
 import io.airbyte.commons.server.handlers.helpers.CatalogConverter;
 import io.airbyte.config.BasicSchedule;
 import io.airbyte.config.Schedule;
@@ -154,7 +155,9 @@ public class ApiPojoConverters {
         .breakingChange(standardSync.getBreakingChange())
         .geography(Enums.convertTo(standardSync.getGeography(), Geography.class))
         .nonBreakingChangesPreference(Enums.convertTo(standardSync.getNonBreakingChangesPreference(), NonBreakingChangesPreference.class))
-        .notifySchemaChanges(standardSync.getNotifySchemaChanges());
+        .notifySchemaChanges(standardSync.getNotifySchemaChanges())
+        .puentePolicy(standardSync.getPuentePolicy() == null ? null
+            : Jsons.convertValue(standardSync.getPuentePolicy(), io.airbyte.api.model.generated.PuenteConnectionPolicy.class));
 
     if (standardSync.getResourceRequirements() != null) {
       connectionRead.resourceRequirements(resourceRequirementsToApi(standardSync.getResourceRequirements()));
