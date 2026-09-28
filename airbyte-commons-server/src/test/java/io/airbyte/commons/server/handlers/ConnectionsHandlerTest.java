@@ -55,6 +55,7 @@ import io.airbyte.config.DestinationConnection;
 import io.airbyte.config.FieldSelectionData;
 import io.airbyte.config.Geography;
 import io.airbyte.config.JobSyncConfig;
+import io.airbyte.config.PuenteConnectionPolicy;
 import io.airbyte.config.Schedule;
 import io.airbyte.config.Schedule.TimeUnit;
 import io.airbyte.config.ScheduleData;
@@ -85,6 +86,7 @@ import org.junit.Assert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class ConnectionsHandlerTest {
 
@@ -224,6 +226,14 @@ class ConnectionsHandlerTest {
     assertEquals(List.of("accepted"), result.getOperations().get(0).getLogs());
   }
 
+  @Test
+  void hasAcceptedPuenteFillUsesTargetedPersistenceLookup() throws IOException {
+    when(configRepository.hasAcceptedPuenteFill("fill-1", destinationId)).thenReturn(true);
+
+    assertTrue(connectionsHandler.hasAcceptedPuenteFill("fill-1", destinationId).getAccepted());
+    verify(configRepository).hasAcceptedPuenteFill("fill-1", destinationId);
+  }
+
   @Nested
   class UnMockedConnectionHelper {
 
@@ -308,6 +318,37 @@ class ConnectionsHandlerTest {
             .scheduleType(ConnectionScheduleType.BASIC)
             .scheduleData(ConnectionHelpers.generateBasicConnectionScheduleData());
         assertEquals(expectedConnectionRead, connectionsHandler.createConnection(connectionCreate));
+      }
+
+      @Test
+      void testCreatePaperConnectionResolvesPolicyFromActorConfigurations()
+          throws JsonValidationException, ConfigNotFoundException, IOException {
+        source
+            .withSourceDefinitionId(UUID.fromString("3f86e20a-9ea8-4b93-9172-21d35a88f671"))
+            .withConfiguration(Jsons.jsonNode(Map.of(
+                "symbol_map", Map.of("DAX", "DE40", "DJ", "US30", "ES", "US500"),
+                "tradable_symbols", List.of("DAX", "DJ", "ES"))));
+        destination
+            .withDestinationDefinitionId(UUID.fromString("a8bc6435-85a6-4338-a98f-45f6557bb87b"))
+            .withConfiguration(Jsons.jsonNode(Map.of(
+                "symbol_map", Map.of("GER40", "DE40", "WS30", "US30", "SPX", "US500"),
+                "tradable_symbols", List.of("GER40", "WS30"))));
+        when(configRepository.getStandardWorkspaceNoSecrets(workspaceId, true))
+            .thenReturn(new StandardWorkspace().withWorkspaceId(workspaceId).withDefaultGeography(Geography.AUTO));
+
+        connectionsHandler.createConnection(buildConnectionCreateRequest(standardSync, ConnectionHelpers.generateBasicApiCatalog()));
+
+        final ArgumentCaptor<StandardSync> written = ArgumentCaptor.forClass(StandardSync.class);
+        verify(configRepository).writeStandardSync(written.capture());
+        final PuenteConnectionPolicy policy = written.getValue().getPuentePolicy();
+        assertEquals(PuenteConnectionPolicy.Mode.PAPER, policy.getMode());
+        assertEquals(List.of("DAX", "DJ", "ES"), policy.getRows().stream().map(row -> row.getSourceSymbol()).toList());
+        assertEquals(List.of("GER40", "WS30"), policy.getRows().stream()
+            .filter(row -> row.getDestinationSymbol() != null)
+            .map(row -> row.getDestinationSymbol())
+            .toList());
+        assertEquals("destination_unavailable", policy.getRows().get(2).getExclusionReason());
+        assertTrue(policy.getRows().stream().allMatch(row -> row.getContractFactor() == 1D && row.getScale() == 1D));
       }
 
       @Test

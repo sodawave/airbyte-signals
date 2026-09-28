@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -125,6 +126,88 @@ class StandardSyncPersistenceTest extends BaseConfigDatabaseTest {
         1));
     assertTrue(journal.hasAccepted("paper-fill-1", destination1.getDestinationId()));
     assertEquals(1000L, journal.list(sync.getConnectionId()).get(0).desfaseMs());
+  }
+
+  @Test
+  void puenteJournalAtomicallyDebitsOnlyNewAcceptedFiniteQuota()
+      throws IOException, ConfigNotFoundException, JsonValidationException {
+    createBaseObjects();
+    final StandardSync sync = createStandardSync(source1, destination1)
+        .withPuentePolicy(new PuenteConnectionPolicy()
+            .withMode(PuenteConnectionPolicy.Mode.LIVE)
+            .withLiveQuota(1L)
+            .withRows(List.of(new PuenteCrosswalkRow()
+                .withSourceSymbol("DAX")
+                .withCanonicalInstrument("DE40")
+                .withDestinationSymbol("GER40")
+                .withContractFactor(1D)
+                .withScale(1D))));
+    standardSyncPersistence.writeStandardSync(sync);
+    final PuenteOperationJournalPersistence journal = new PuenteOperationJournalPersistence(database);
+    final OffsetDateTime origin = OffsetDateTime.parse("2026-01-01T00:00:00Z");
+
+    journal.append(journalRecord(sync, "fill-1", "accepted", origin, origin.plusSeconds(2), 999L));
+    journal.append(journalRecord(sync, "fill-1", "accepted", origin, origin.plusSeconds(3), 999L));
+    journal.append(journalRecord(sync, "fill-rejected", "rejected", origin, origin.plusSeconds(4), 999L));
+    journal.append(journalRecord(sync, "fill-over-quota", "accepted", origin, origin.plusSeconds(5), 999L));
+
+    assertEquals(0L, standardSyncPersistence.getStandardSync(sync.getConnectionId()).getPuentePolicy().getLiveQuota());
+    final List<PuenteOperationJournalPersistence.JournalRecord> rows = journal.list(sync.getConnectionId());
+    assertEquals(1, rows.stream().filter(row -> "accepted".equals(row.status())).count());
+    assertEquals(1, rows.stream().filter(row -> "duplicate".equals(row.status())).count());
+    assertEquals(2, rows.stream().filter(row -> "rejected".equals(row.status())).count());
+    assertEquals(2000L, rows.stream().filter(row -> "fill-1".equals(row.sourceFillId()) && "accepted".equals(row.status()))
+        .findFirst().orElseThrow().desfaseMs());
+  }
+
+  @Test
+  void puenteNullLiveQuotaRemainsUnlimitedAfterAcceptance()
+      throws IOException, ConfigNotFoundException, JsonValidationException {
+    createBaseObjects();
+    final StandardSync sync = createStandardSync(source1, destination1)
+        .withPuentePolicy(new PuenteConnectionPolicy()
+            .withMode(PuenteConnectionPolicy.Mode.LIVE)
+            .withRows(List.of(new PuenteCrosswalkRow()
+                .withSourceSymbol("DAX")
+                .withCanonicalInstrument("DE40")
+                .withDestinationSymbol("GER40")
+                .withContractFactor(1D)
+                .withScale(1D))));
+    standardSyncPersistence.writeStandardSync(sync);
+    final OffsetDateTime origin = OffsetDateTime.parse("2026-01-01T00:00:00Z");
+    new PuenteOperationJournalPersistence(database)
+        .append(journalRecord(sync, "fill-unlimited", "accepted", origin, origin.plusSeconds(1), 0L));
+
+    assertNull(standardSyncPersistence.getStandardSync(sync.getConnectionId()).getPuentePolicy().getLiveQuota());
+  }
+
+  @Test
+  void puenteJournalListIsNewestFirstAndBounded() throws IOException, JsonValidationException {
+    createBaseObjects();
+    final StandardSync sync = createStandardSync(source1, destination1);
+    standardSyncPersistence.writeStandardSync(sync);
+    final PuenteOperationJournalPersistence journal = new PuenteOperationJournalPersistence(database);
+    final OffsetDateTime origin = OffsetDateTime.parse("2026-01-01T00:00:00Z");
+    for (int index = 0; index <= 200; index++) {
+      journal.append(journalRecord(sync, "fill-" + index, "rejected", origin, origin.plusSeconds(index), null));
+    }
+
+    final List<PuenteOperationJournalPersistence.JournalRecord> rows = journal.list(sync.getConnectionId());
+    assertEquals(200, rows.size());
+    assertEquals("fill-200", rows.get(0).sourceFillId());
+    assertEquals("fill-1", rows.get(199).sourceFillId());
+  }
+
+  private PuenteOperationJournalPersistence.JournalRecord journalRecord(final StandardSync sync,
+                                                                         final String fillId,
+                                                                         final String status,
+                                                                         final OffsetDateTime origin,
+                                                                         final OffsetDateTime replica,
+                                                                         final Long desfase) {
+    return new PuenteOperationJournalPersistence.JournalRecord(
+        UUID.randomUUID(), sync.getConnectionId(), fillId, destination1.getDestinationId(), status, null,
+        Jsons.jsonNode("{}"), Jsons.jsonNode("{}"), Jsons.jsonNode("{}"), Jsons.jsonNode(List.of(status)),
+        origin, origin, origin, replica, desfase, 1);
   }
 
   @Test

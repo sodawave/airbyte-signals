@@ -4,6 +4,7 @@
 
 package io.airbyte.server.apis;
 
+import static io.airbyte.commons.auth.AuthRoleConstants.ADMIN;
 import static io.airbyte.commons.auth.AuthRoleConstants.EDITOR;
 import static io.airbyte.commons.auth.AuthRoleConstants.READER;
 
@@ -17,6 +18,8 @@ import io.airbyte.api.model.generated.ConnectionUpdate;
 import io.airbyte.api.model.generated.JobInfoRead;
 import io.airbyte.api.model.generated.PuenteJournalRead;
 import io.airbyte.api.model.generated.PuenteJournalReadList;
+import io.airbyte.api.model.generated.PuenteAcceptedFillRequest;
+import io.airbyte.api.model.generated.PuenteAcceptedFillResponse;
 import io.airbyte.api.model.generated.WorkspaceIdRequestBody;
 import io.airbyte.commons.auth.SecuredWorkspace;
 import io.airbyte.commons.server.handlers.ConnectionsHandler;
@@ -108,13 +111,21 @@ public class ConnectionApiController implements ConnectionApi {
   @Override
   @Post(uri = "/puente/journal/append")
   @Status(HttpStatus.NO_CONTENT)
-  @Secured({EDITOR})
+  @Secured({ADMIN})
   @SecuredWorkspace
   public void appendPuenteJournal(@Body final PuenteJournalRead operation) {
     ApiHelper.execute(() -> {
       connectionsHandler.appendPuenteJournal(operation);
       return null;
     });
+  }
+
+  @Override
+  @Post(uri = "/puente/journal/accepted")
+  @Secured({ADMIN})
+  @SecuredWorkspace
+  public PuenteAcceptedFillResponse hasAcceptedPuenteFill(@Body final PuenteAcceptedFillRequest request) {
+    return ApiHelper.execute(() -> connectionsHandler.hasAcceptedPuenteFill(request.getSourceFillId(), request.getDestinationId()));
   }
 
   @Override

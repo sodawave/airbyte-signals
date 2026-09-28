@@ -267,7 +267,51 @@ class DefaultReplicationWorkerTest {
     assertTrue(journal.hasAccepted(fillId, syncInput.getDestinationId()));
     assertEquals(0L, policy.getLiveQuota());
     assertTrue(journal.entries().get(0).destinationResponse().get("persisted").asBoolean());
+    assertNotNull(journal.entries().get(0).sentAt());
     verify(messageTracker, never()).acceptFromDestination(Mockito.any());
+  }
+
+  @Test
+  void puentePrewriteSkipCountsAsSourceReadButNotDestinationDelivery() throws Exception {
+    syncInput.getCatalog().getStreams().get(0).getStream().setName("fills");
+    syncInput.getCatalog().getStreams().get(0).getStream().setJsonSchema(Jsons.jsonNode(Map.of(
+        "type", "object",
+        "properties", Map.of(
+            "source_fill_id", Map.of("type", "string"),
+            "symbol", Map.of("type", "string"),
+            "quantity", Map.of("type", "number"),
+            "origen_en", Map.of("type", "string")))));
+    when(mapper.mapCatalog(Mockito.any())).thenAnswer(invocation -> invocation.getArgument(0));
+    final AirbyteMessage excluded = new AirbyteMessage()
+        .withType(AirbyteMessage.Type.RECORD)
+        .withRecord(new AirbyteRecordMessage()
+            .withStream("fills")
+            .withEmittedAt(0L)
+            .withData(Jsons.jsonNode(Map.of(
+                "source_fill_id", "paper-es-skip",
+                "symbol", "ES",
+                "quantity", 1D,
+                "origen_en", "2026-01-01T00:00:00Z"))));
+    syncInput.setPuentePolicy(new PuenteConnectionPolicy()
+        .withMode(PuenteConnectionPolicy.Mode.PAPER)
+        .withRows(List.of(new PuenteCrosswalkRow()
+            .withSourceSymbol("ES")
+            .withCanonicalInstrument("US500")
+            .withExclusionReason("destination_unavailable")
+            .withContractFactor(1D)
+            .withScale(1D))));
+    when(source.isFinished()).thenReturn(false, true);
+    when(source.attemptRead()).thenReturn(Optional.of(excluded));
+    when(mapper.mapMessage(excluded)).thenReturn(excluded);
+    when(destination.isFinished()).thenReturn(true);
+
+    new DefaultReplicationWorker(
+        JOB_ID, JOB_ATTEMPT, source, mapper, destination, messageTracker, recordSchemaValidator,
+        workerMetricReporter, connectorConfigUpdater, false, new InMemoryPuenteJournalWriter())
+            .run(syncInput, jobRoot);
+
+    verify(messageTracker).acceptFromSource(excluded);
+    verify(destination, never()).accept(Mockito.any());
   }
 
   @Test

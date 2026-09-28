@@ -6,6 +6,8 @@ package io.airbyte.workers.general.puente;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.airbyte.commons.json.Jsons;
@@ -109,6 +111,66 @@ class PuenteReplicationPolicyTest {
     assertFalse(entry.destinationResponse().get("accepted").asBoolean());
     assertFalse(entry.destinationResponse().get("persisted").asBoolean());
     assertEquals(1L, config.getLiveQuota());
+  }
+
+  @Test
+  void nullQuotaIsUnlimitedAndFiniteQuotaIncludesPendingReservations() {
+    config.setMode(PuenteConnectionPolicy.Mode.LIVE);
+    config.setLiveQuota(null);
+    final var unlimited = policy.prepare(fill("unlimited-1", "DAX", 1D)).orElseThrow();
+    assertTrue(policy.registerPending(unlimited));
+    assertTrue(policy.acknowledge(acknowledgment("unlimited-1", "accepted", null)));
+    assertNull(config.getLiveQuota());
+
+    config.setLiveQuota(1L);
+    final var reserved = policy.prepare(fill("reserved-1", "DAX", 1D)).orElseThrow();
+    assertTrue(policy.registerPending(reserved));
+    assertTrue(policy.prepare(fill("reserved-2", "DJ", 1D)).isEmpty());
+    assertEquals("quota_exhausted", journal.entries().get(1).reason());
+  }
+
+  @Test
+  void rejectsDuplicateAndAmbiguousPolicies() {
+    assertThrows(IllegalArgumentException.class, () -> new PuenteReplicationPolicy(
+        CONNECTION_ID, DESTINATION_ID,
+        new PuenteConnectionPolicy().withMode(PuenteConnectionPolicy.Mode.PAPER)
+            .withRows(List.of(
+                row("DAX", "DE40", "GER40", null, 1D, 1D),
+                row("DAX", "DE40", "GER40", null, 1D, 1D))),
+        journal));
+    assertThrows(IllegalArgumentException.class, () -> new PuenteReplicationPolicy(
+        CONNECTION_ID, DESTINATION_ID,
+        new PuenteConnectionPolicy().withMode(PuenteConnectionPolicy.Mode.PAPER)
+            .withRows(List.of(row("DAX", "DE40", "GER40", "excluded", 1D, 1D))),
+        journal));
+    assertThrows(IllegalArgumentException.class, () -> new PuenteReplicationPolicy(
+        CONNECTION_ID, DESTINATION_ID,
+        new PuenteConnectionPolicy().withMode(PuenteConnectionPolicy.Mode.PAPER)
+            .withRows(List.of(row("DAX", "DE40", null, null, 1D, 1D))),
+        journal));
+  }
+
+  @Test
+  void handlesMalformedRecordsAndPreservesUnmatchedMessages() {
+    final AirbyteMessage malformed = new AirbyteMessage()
+        .withType(AirbyteMessage.Type.RECORD)
+        .withRecord(new AirbyteRecordMessage()
+            .withStream(PuenteReplicationPolicy.FILL_STREAM)
+            .withEmittedAt(0L)
+            .withData(Jsons.jsonNode("not-an-object")));
+    assertTrue(policy.prepare(malformed).isEmpty());
+    assertEquals("invalid_record_data", journal.entries().get(0).reason());
+
+    final AirbyteMessage invalidTimestamp = fill("bad-time", "DAX", 1D);
+    ((com.fasterxml.jackson.databind.node.ObjectNode) invalidTimestamp.getRecord().getData())
+        .set("origen_en", Jsons.deserialize("999999999999999999999999999999"));
+    assertTrue(policy.prepare(invalidTimestamp).isEmpty());
+    assertEquals("invalid_origin_timestamp", journal.entries().get(1).reason());
+
+    final AirbyteMessage nonFill = fill("other-1", "DAX", 1D);
+    nonFill.getRecord().setStream("other");
+    assertEquals(nonFill, policy.prepare(nonFill).orElseThrow().message());
+    assertFalse(policy.acknowledge(acknowledgment("unknown", "accepted", null)));
   }
 
   private static PuenteCrosswalkRow row(final String source,

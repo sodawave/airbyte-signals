@@ -4,6 +4,7 @@
 
 package io.airbyte.commons.server.handlers;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
@@ -22,6 +23,7 @@ import io.airbyte.api.model.generated.DestinationRead;
 import io.airbyte.api.model.generated.DestinationSearch;
 import io.airbyte.api.model.generated.PuenteJournalRead;
 import io.airbyte.api.model.generated.PuenteJournalReadList;
+import io.airbyte.api.model.generated.PuenteAcceptedFillResponse;
 import io.airbyte.api.model.generated.SourceRead;
 import io.airbyte.api.model.generated.SourceSearch;
 import io.airbyte.api.model.generated.StreamDescriptor;
@@ -69,6 +71,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -169,7 +172,7 @@ public class ConnectionsHandler {
     if (standardSync.getPuentePolicy() == null
         && PAPER_SOURCE_DEFINITION_ID.equals(sourceConnection.getSourceDefinitionId())
         && PAPER_DESTINATION_DEFINITION_ID.equals(destinationConnection.getDestinationDefinitionId())) {
-      standardSync.withPuentePolicy(defaultPaperPolicy());
+      standardSync.withPuentePolicy(defaultPaperPolicy(sourceConnection, destinationConnection));
     }
 
     // TODO Undesirable behavior: sending a null configured catalog should not be valid?
@@ -208,28 +211,38 @@ public class ConnectionsHandler {
     return buildConnectionRead(connectionId);
   }
 
-  private static PuenteConnectionPolicy defaultPaperPolicy() {
-    return new PuenteConnectionPolicy()
-        .withMode(PuenteConnectionPolicy.Mode.PAPER)
-        .withRows(List.of(
-            new PuenteCrosswalkRow()
-                .withSourceSymbol("DAX")
-                .withCanonicalInstrument("DE40")
-                .withDestinationSymbol("GER40")
-                .withContractFactor(1D)
-                .withScale(1D),
-            new PuenteCrosswalkRow()
-                .withSourceSymbol("DJ")
-                .withCanonicalInstrument("US30")
-                .withDestinationSymbol("WS30")
-                .withContractFactor(1D)
-                .withScale(1D),
-            new PuenteCrosswalkRow()
-                .withSourceSymbol("ES")
-                .withCanonicalInstrument("US500")
-                .withExclusionReason("future_not_supported")
-                .withContractFactor(1D)
-                .withScale(1D)));
+  private static PuenteConnectionPolicy defaultPaperPolicy(final SourceConnection source, final DestinationConnection destination) {
+    final JsonNode sourceConfig = source.getConfiguration();
+    final JsonNode destinationConfig = destination.getConfiguration();
+    final Set<String> sourceTradable = Jsons.convertValue(sourceConfig.path("tradable_symbols"), Set.class);
+    final Set<String> destinationTradable = Jsons.convertValue(destinationConfig.path("tradable_symbols"), Set.class);
+    final Map<String, String> destinationByCanonical = new TreeMap<>();
+    destinationConfig.path("symbol_map").fields().forEachRemaining(entry -> {
+      if (destinationTradable.contains(entry.getKey()) && entry.getValue().isTextual()) {
+        destinationByCanonical.merge(entry.getValue().asText(), entry.getKey(), (left, right) -> left.compareTo(right) <= 0 ? left : right);
+      }
+    });
+
+    final Map<String, String> sourceBySymbol = new TreeMap<>();
+    sourceConfig.path("symbol_map").fields().forEachRemaining(entry -> {
+      if (sourceTradable.contains(entry.getKey()) && entry.getValue().isTextual()) {
+        sourceBySymbol.put(entry.getKey(), entry.getValue().asText());
+      }
+    });
+    final List<PuenteCrosswalkRow> rows = sourceBySymbol.entrySet().stream()
+        .map(entry -> {
+          final PuenteCrosswalkRow row = new PuenteCrosswalkRow()
+              .withSourceSymbol(entry.getKey())
+              .withCanonicalInstrument(entry.getValue())
+              .withContractFactor(1D)
+              .withScale(1D);
+          final String destinationSymbol = destinationByCanonical.get(entry.getValue());
+          return destinationSymbol == null
+              ? row.withExclusionReason("destination_unavailable")
+              : row.withDestinationSymbol(destinationSymbol);
+        })
+        .toList();
+    return new PuenteConnectionPolicy().withMode(PuenteConnectionPolicy.Mode.PAPER).withRows(rows);
   }
 
   private Geography getGeographyFromConnectionCreateOrWorkspace(final ConnectionCreate connectionCreate)
@@ -538,6 +551,10 @@ public class ConnectionsHandler {
         operation.getReplicaAt(),
         operation.getDesfaseMs(),
         operation.getAttempt()));
+  }
+
+  public PuenteAcceptedFillResponse hasAcceptedPuenteFill(final String sourceFillId, final UUID destinationId) throws IOException {
+    return new PuenteAcceptedFillResponse().accepted(configRepository.hasAcceptedPuenteFill(sourceFillId, destinationId));
   }
 
   public CatalogDiff getDiff(final AirbyteCatalog oldCatalog, final AirbyteCatalog newCatalog, final ConfiguredAirbyteCatalog configuredCatalog)

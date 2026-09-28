@@ -13,6 +13,7 @@ import io.airbyte.protocol.models.AirbyteMessage;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.DateTimeException;
 import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.List;
@@ -63,7 +64,16 @@ public class PuenteReplicationPolicy {
     this.journal = journal;
     this.attempt = attempt;
     this.rows = new HashMap<>();
-    policy.getRows().forEach(row -> rows.put(row.getSourceSymbol(), row));
+    policy.getRows().forEach(row -> {
+      final boolean mapped = row.getDestinationSymbol() != null;
+      final boolean excluded = row.getExclusionReason() != null;
+      if (mapped == excluded) {
+        throw new IllegalArgumentException("Each Puente row must define exactly one destination or exclusion");
+      }
+      if (rows.putIfAbsent(row.getSourceSymbol(), row) != null) {
+        throw new IllegalArgumentException("Duplicate Puente source symbol: " + row.getSourceSymbol());
+      }
+    });
   }
 
   /**
@@ -76,10 +86,18 @@ public class PuenteReplicationPolicy {
 
     final OffsetDateTime receivedAt = OffsetDateTime.now(ZoneOffset.UTC);
     final JsonNode source = Jsons.clone(message.getRecord().getData());
+    if (source == null || !source.isObject()) {
+      append("skipped", "invalid_record_data", null, source, null, null, null, receivedAt, null, receivedAt);
+      return Optional.empty();
+    }
     final String fillId = text(source, SOURCE_FILL_ID);
     final String symbol = text(source, SOURCE_SYMBOL);
     final OffsetDateTime originAt = originAt(source);
 
+    if (source.hasNonNull(ORIGIN_AT) && originAt == null) {
+      append("skipped", "invalid_origin_timestamp", fillId, source, null, null, null, receivedAt, null, receivedAt);
+      return Optional.empty();
+    }
     if (fillId == null) {
       append("skipped", "missing_fill_id", null, source, null, null, originAt, receivedAt, null, receivedAt);
       return Optional.empty();
@@ -103,7 +121,8 @@ public class PuenteReplicationPolicy {
       return Optional.empty();
     }
     if (policy.getMode() == PuenteConnectionPolicy.Mode.LIVE
-        && (policy.getLiveQuota() == null || policy.getLiveQuota() <= 0)) {
+        && policy.getLiveQuota() != null
+        && policy.getLiveQuota() <= pending.size()) {
       append("skipped", "quota_exhausted", fillId, source, null, null, originAt, receivedAt, null, receivedAt);
       return Optional.empty();
     }
@@ -126,23 +145,41 @@ public class PuenteReplicationPolicy {
         Jsons.clone(outboundData),
         originAt,
         receivedAt,
-        OffsetDateTime.now(ZoneOffset.UTC)));
+        null));
   }
 
   /**
    * Registers a fill before writing it to destination STDIN. A second in-flight copy is suppressed.
    */
-  public boolean registerPending(final PreparedFill prepared) {
+  public synchronized boolean registerPending(final PreparedFill prepared) {
     if (!prepared.isFill()) {
       return true;
     }
-    if (pending.putIfAbsent(prepared.fillId(), prepared) != null) {
+    if (pending.containsKey(prepared.fillId())) {
       final OffsetDateTime replicaAt = OffsetDateTime.now(ZoneOffset.UTC);
       append("duplicate", "already_in_flight", prepared.fillId(), prepared.sourceRecord(), prepared.outboundRequest(), null,
           prepared.originAt(), prepared.receivedAt(), prepared.sentAt(), replicaAt);
       return false;
     }
+    if (policy.getMode() == PuenteConnectionPolicy.Mode.LIVE
+        && policy.getLiveQuota() != null
+        && policy.getLiveQuota() <= pending.size()) {
+      final OffsetDateTime replicaAt = OffsetDateTime.now(ZoneOffset.UTC);
+      append("skipped", "quota_exhausted", prepared.fillId(), prepared.sourceRecord(), null, null,
+          prepared.originAt(), prepared.receivedAt(), null, replicaAt);
+      return false;
+    }
+    pending.put(prepared.fillId(), prepared);
     return true;
+  }
+
+  public PreparedFill markSent(final PreparedFill prepared) {
+    if (!prepared.isFill()) {
+      return prepared;
+    }
+    final PreparedFill sent = prepared.withSentAt(OffsetDateTime.now(ZoneOffset.UTC));
+    pending.replace(prepared.fillId(), prepared, sent);
+    return sent;
   }
 
   /**
@@ -164,7 +201,7 @@ public class PuenteReplicationPolicy {
     final String fillId = text(acknowledgment, SOURCE_FILL_ID);
     final PreparedFill prepared = fillId == null ? null : pending.remove(fillId);
     if (prepared == null) {
-      return true;
+      return false;
     }
 
     final JsonNode response = acknowledgment.has("response") ? acknowledgment.get("response") : acknowledgment;
@@ -184,7 +221,9 @@ public class PuenteReplicationPolicy {
     append("accepted", null, prepared.fillId(), prepared.sourceRecord(), prepared.outboundRequest(),
         response, prepared.originAt(), prepared.receivedAt(), prepared.sentAt(), replicaAt);
     if (policy.getMode() == PuenteConnectionPolicy.Mode.LIVE) {
-      policy.setLiveQuota(policy.getLiveQuota() - 1);
+      if (policy.getLiveQuota() != null) {
+        policy.setLiveQuota(policy.getLiveQuota() - 1);
+      }
     }
   }
 
@@ -245,7 +284,14 @@ public class PuenteReplicationPolicy {
     }
     final JsonNode value = source.get(ORIGIN_AT);
     if (value.isNumber()) {
-      return OffsetDateTime.ofInstant(Instant.ofEpochMilli(value.asLong()), ZoneOffset.UTC);
+      if (!value.canConvertToLong()) {
+        return null;
+      }
+      try {
+        return OffsetDateTime.ofInstant(Instant.ofEpochMilli(value.asLong()), ZoneOffset.UTC);
+      } catch (final DateTimeException e) {
+        return null;
+      }
     }
     try {
       return OffsetDateTime.parse(value.asText());
@@ -265,6 +311,10 @@ public class PuenteReplicationPolicy {
 
     public boolean isFill() {
       return fillId != null;
+    }
+
+    public PreparedFill withSentAt(final OffsetDateTime sentAt) {
+      return new PreparedFill(message, fillId, sourceRecord, outboundRequest, originAt, receivedAt, sentAt);
     }
 
   }

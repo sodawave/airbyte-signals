@@ -32,10 +32,9 @@ def acknowledgment(
 
 class DestinationPaper(Destination):
     def check(self, logger: AirbyteLogger, config: Mapping[str, Any]) -> AirbyteConnectionStatus:
-        if not config.get("entity_id"):
-            return AirbyteConnectionStatus(status=Status.FAILED, message="entity_id is required")
-        if not isinstance(config.get("symbol_map"), dict) or not config["symbol_map"]:
-            return AirbyteConnectionStatus(status=Status.FAILED, message="symbol_map is required")
+        error = validate_entity_config(config)
+        if error:
+            return AirbyteConnectionStatus(status=Status.FAILED, message=error)
         return AirbyteConnectionStatus(status=Status.SUCCEEDED)
 
     def write(
@@ -90,6 +89,22 @@ class DestinationPaper(Destination):
                         "unsupported_symbol",
                     )
                     continue
+                canonical = record.get("canonical_instrument")
+                if canonical is not None and canonical != config["symbol_map"][symbol]:
+                    yield acknowledgment(
+                        fill_id,
+                        destination_id,
+                        "rejected",
+                        {
+                            "accepted": False,
+                            "persisted": False,
+                            "error": f"Canonical instrument mismatch for {symbol}: {canonical}",
+                            "symbol": symbol,
+                            "canonical_instrument": canonical,
+                        },
+                        "canonical_mismatch",
+                    )
+                    continue
                 key = f"{fill_id}:{destination_id}"
                 cursor = database.execute(
                     """
@@ -113,3 +128,22 @@ class DestinationPaper(Destination):
                         "symbol": symbol,
                     },
                 )
+
+
+def validate_entity_config(config: Mapping[str, Any]) -> str | None:
+    if not isinstance(config.get("entity_id"), str) or not config["entity_id"].strip():
+        return "entity_id must be a non-empty string"
+    symbol_map = config.get("symbol_map")
+    if (
+        not isinstance(symbol_map, dict)
+        or not symbol_map
+        or any(not isinstance(key, str) or not key.strip() or not isinstance(value, str) or not value.strip() for key, value in symbol_map.items())
+    ):
+        return "symbol_map must contain non-empty native-to-canonical symbols"
+    for field in ("supported_asset_classes", "tradable_symbols"):
+        value = config.get(field)
+        if not isinstance(value, list) or not value or any(not isinstance(item, str) or not item.strip() for item in value):
+            return f"{field} must be a non-empty string list"
+    if not set(config["tradable_symbols"]).issubset(symbol_map):
+        return "Every tradable symbol must have a canonical symbol_map entry"
+    return None

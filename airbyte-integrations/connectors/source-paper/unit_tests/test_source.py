@@ -26,3 +26,18 @@ def test_check_discover_and_read_deterministic_fills():
         "paper-dj-1",
         "paper-es-1",
     ]
+
+
+def test_check_rejects_incomplete_or_inconsistent_entity_configuration():
+    source = SourcePaper()
+    for patch in (
+        {"entity_id": ""},
+        {"symbol_map": {}},
+        {"supported_asset_classes": []},
+        {"tradable_symbols": ["UNKNOWN"]},
+        {"symbol_map": {"DAX": ""}},
+    ):
+        config = {**CONFIG, **patch}
+        ok, error = source.check_connection(None, config)
+        assert not ok
+        assert error

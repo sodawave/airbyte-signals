@@ -1,6 +1,6 @@
 import sqlite3
 
-from airbyte_cdk.models import AirbyteMessage, AirbyteRecordMessage, Type
+from airbyte_cdk.models import AirbyteMessage, AirbyteRecordMessage, Status, Type
 
 from destination_paper import DestinationPaper
 
@@ -51,3 +51,40 @@ def test_write_acknowledges_unsupported_symbol_without_persisting(tmp_path):
     assert acknowledgment["response"]["persisted"] is False
     with sqlite3.connect(ledger) as database:
         assert database.execute("SELECT COUNT(*) FROM replicas").fetchone()[0] == 0
+
+
+def test_check_rejects_incomplete_or_inconsistent_entity_configuration():
+    destination = DestinationPaper()
+    valid = {
+        "entity_id": "destination-one",
+        "symbol_map": {"GER40": "DE40"},
+        "supported_asset_classes": ["index"],
+        "tradable_symbols": ["GER40"],
+    }
+    assert destination.check(None, valid).status == Status.SUCCEEDED
+    for patch in (
+        {"entity_id": ""},
+        {"symbol_map": {}},
+        {"supported_asset_classes": []},
+        {"tradable_symbols": ["UNKNOWN"]},
+        {"symbol_map": {"GER40": ""}},
+    ):
+        assert destination.check(None, {**valid, **patch}).status == Status.FAILED
+
+
+def test_write_rejects_canonical_mismatch(tmp_path):
+    config = {
+        "entity_id": "destination-one",
+        "symbol_map": {"GER40": "DE40"},
+        "supported_asset_classes": ["index"],
+        "tradable_symbols": ["GER40"],
+        "ledger_path": str(tmp_path / "paper.sqlite"),
+    }
+    message = record("fill-mismatch", "GER40")
+    message.record.data["canonical_instrument"] = "US30"
+
+    acknowledgment = list(DestinationPaper().write(config, None, [message]))[0].state.data["_puente_ack"]
+
+    assert acknowledgment["status"] == "rejected"
+    assert acknowledgment["reason"] == "canonical_mismatch"
+    assert acknowledgment["response"]["persisted"] is False

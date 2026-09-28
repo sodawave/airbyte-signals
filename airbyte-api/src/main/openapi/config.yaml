@@ -1370,6 +1370,26 @@ paths:
           description: Journal row appended
         "422":
           $ref: "#/components/responses/InvalidInputResponse"
+  /v1/connections/puente/journal/accepted:
+    post:
+      tags:
+        - connection
+        - internal
+      summary: Check whether one Puente fill was accepted
+      operationId: hasAcceptedPuenteFill
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PuenteAcceptedFillRequest"
+        required: true
+      responses:
+        "200":
+          description: Accepted-fill lookup result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PuenteAcceptedFillResponse"
   /v1/state/get:
     post:
       tags:
@@ -3682,6 +3702,28 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PuenteJournalRead"
+    PuenteAcceptedFillRequest:
+      type: object
+      required:
+        - connectionId
+        - sourceFillId
+        - destinationId
+      properties:
+        connectionId:
+          type: string
+          format: uuid
+        sourceFillId:
+          type: string
+        destinationId:
+          type: string
+          format: uuid
+    PuenteAcceptedFillResponse:
+      type: object
+      required:
+        - accepted
+      properties:
+        accepted:
+          type: boolean
     SchemaChange:
       enum:
         - no_change

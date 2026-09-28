@@ -19,8 +19,10 @@ jest.mock("components/ui/Card", () => ({
 }));
 
 jest.mock("components/ui/Button", () => ({
-  Button: ({ children, onClick }: React.PropsWithChildren<{ onClick: () => void }>) => (
-    <button onClick={onClick}>{children}</button>
+  Button: ({ children, onClick, disabled }: React.PropsWithChildren<{ onClick: () => void; disabled?: boolean }>) => (
+    <button onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
   ),
 }));
 
@@ -69,7 +71,8 @@ describe("PuentePanel", () => {
 
     expect(screen.getByText("Papel (sin límite)")).toBeInTheDocument();
     expect(screen.getByDisplayValue("GER40")).toBeInTheDocument();
-    expect(await screen.findByText("future_not_supported")).toBeInTheDocument();
+    expect(await screen.findByText("Futuro no admitido")).toBeInTheDocument();
+    expect(screen.getByText("Omitida")).toBeInTheDocument();
     expect(screen.getByText("1000 ms")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Escala DAX"), { target: { value: "3" } });
@@ -85,5 +88,33 @@ describe("PuentePanel", () => {
         })
       )
     );
+  });
+
+  it("rejects zero factors", async () => {
+    render(<PuentePanel connectionId="connection-1" policy={policy} />);
+    fireEvent.change(screen.getByLabelText("Factor DAX"), { target: { value: "0" } });
+    expect(screen.getByRole("alert")).toHaveTextContent("Factor y escala deben ser positivos");
+    expect(screen.getByText("Guardar cruce")).toBeDisabled();
+  });
+
+  it("shows a null live quota as unlimited", () => {
+    render(<PuentePanel connectionId="connection-1" policy={{ ...policy, mode: "live" }} />);
+    expect(screen.getByText(/Cuota restante: Sin límite/)).toBeInTheDocument();
+  });
+
+  it("shows journal errors instead of empty history", async () => {
+    global.fetch = jest.fn().mockRejectedValue(new Error("network"));
+    render(<PuentePanel connectionId="connection-1" policy={policy} />);
+    expect(screen.getByText("Cargando diario…")).toBeInTheDocument();
+    expect(await screen.findByText("No se pudo cargar el diario de operaciones.")).toBeInTheDocument();
+    expect(screen.queryByText("No hay operaciones.")).not.toBeInTheDocument();
+  });
+
+  it("aborts a stale journal request", () => {
+    global.fetch = jest.fn().mockReturnValue(new Promise(() => undefined));
+    const { rerender } = render(<PuentePanel connectionId="connection-1" policy={policy} />);
+    const firstSignal = (global.fetch as jest.Mock).mock.calls[0][1].signal as AbortSignal;
+    rerender(<PuentePanel connectionId="connection-2" policy={policy} />);
+    expect(firstSignal.aborted).toBe(true);
   });
 });

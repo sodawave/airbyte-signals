@@ -411,13 +411,18 @@ public class DefaultReplicationWorker implements ReplicationWorker {
                     ? puentePolicy.get().prepare(message)
                     : Optional.of(new PreparedFill(message, null, null, null, null, null, null));
                 if (prepared.isPresent()) {
+                  PreparedFill delivery = prepared.get();
                   try {
-                    final boolean shouldSend = puentePolicy.map(policy -> policy.registerPending(prepared.get())).orElse(true);
+                    final boolean shouldSend = puentePolicy.isEmpty() || puentePolicy.get().registerPending(delivery);
                     if (shouldSend) {
-                      destination.accept(prepared.get().message());
+                      if (puentePolicy.isPresent()) {
+                        delivery = puentePolicy.get().markSent(delivery);
+                      }
+                      destination.accept(delivery.message());
                     }
                   } catch (final Exception e) {
-                    puentePolicy.ifPresent(policy -> policy.rejected(prepared.get(), e));
+                    final PreparedFill failedDelivery = delivery;
+                    puentePolicy.ifPresent(policy -> policy.rejected(failedDelivery, e));
                     throw e;
                   }
                 }

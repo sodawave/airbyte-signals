@@ -7,7 +7,7 @@ package io.airbyte.workers.general.puente;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.airbyte.api.client.generated.ConnectionApi;
 import io.airbyte.api.client.invoker.generated.ApiException;
-import io.airbyte.api.client.model.generated.ConnectionIdRequestBody;
+import io.airbyte.api.client.model.generated.PuenteAcceptedFillRequest;
 import io.airbyte.api.client.model.generated.PuenteJournalRead;
 import io.airbyte.commons.json.Jsons;
 import java.util.List;
@@ -30,12 +30,11 @@ public class ApiPuenteJournalWriter implements PuenteJournalWriter {
   @Override
   public boolean hasAccepted(final String sourceFillId, final UUID destinationId) {
     try {
-      return connectionApi.listPuenteJournal(new ConnectionIdRequestBody().connectionId(connectionId))
-          .getOperations()
-          .stream()
-          .anyMatch(operation -> operation.getDestinationId().equals(destinationId)
-              && sourceFillId.equals(operation.getSourceFillId())
-              && operation.getStatus() == PuenteJournalRead.StatusEnum.ACCEPTED);
+      return connectionApi.hasAcceptedPuenteFill(new PuenteAcceptedFillRequest()
+          .connectionId(connectionId)
+          .sourceFillId(sourceFillId)
+          .destinationId(destinationId))
+          .getAccepted();
     } catch (final ApiException e) {
       throw new IllegalStateException("Could not read Puente operation journal", e);
     }
