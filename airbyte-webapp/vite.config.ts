@@ -63,6 +63,17 @@ export default defineConfig(({ mode }) => {
     server: {
       port: Number(process.env.PORT) || 3000,
       strictPort: true,
+      proxy: {
+        "/api": {
+          target: process.env.DEV_API_PROXY_TARGET ?? "http://127.0.0.1:8101",
+          changeOrigin: true,
+        },
+        "/connector-builder-api": {
+          target: process.env.DEV_CONNECTOR_BUILDER_PROXY_TARGET ?? "http://127.0.0.1:8103",
+          changeOrigin: true,
+          rewrite: (requestPath) => requestPath.replace(/^\/connector-builder-api/, ""),
+        },
+      },
       headers: {
         "Content-Security-Policy": "script-src * 'unsafe-inline'; worker-src self blob:;",
       },

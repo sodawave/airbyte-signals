@@ -1,7 +1,7 @@
 import json
 import sqlite3
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any, Iterable, Mapping, Optional
 
 from airbyte_cdk import AirbyteLogger
 from airbyte_cdk.destinations import Destination
@@ -17,7 +17,7 @@ def acknowledgment(
     destination_id: str,
     status: str,
     response: Mapping[str, Any],
-    reason: str | None = None,
+    reason: Optional[str] = None,
 ) -> AirbyteMessage:
     payload = {
         "source_fill_id": fill_id,
@@ -130,7 +130,7 @@ class DestinationPaper(Destination):
                 )
 
 
-def validate_entity_config(config: Mapping[str, Any]) -> str | None:
+def validate_entity_config(config: Mapping[str, Any]) -> Optional[str]:
     if not isinstance(config.get("entity_id"), str) or not config["entity_id"].strip():
         return "entity_id must be a non-empty string"
     symbol_map = config.get("symbol_map")

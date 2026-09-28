@@ -1,4 +1,4 @@
-from typing import Any, List, Mapping, Tuple
+from typing import Any, List, Mapping, Optional, Tuple
 
 from airbyte_cdk.logger import AirbyteLogger
 from airbyte_cdk.sources import AbstractSource
@@ -25,7 +25,7 @@ class SourcePaper(AbstractSource):
         return [PaperFills(config)]
 
 
-def validate_entity_config(config: Mapping[str, Any]) -> str | None:
+def validate_entity_config(config: Mapping[str, Any]) -> Optional[str]:
     if not isinstance(config.get("entity_id"), str) or not config["entity_id"].strip():
         return "entity_id must be a non-empty string"
     symbol_map = config.get("symbol_map")

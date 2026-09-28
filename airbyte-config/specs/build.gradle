@@ -27,11 +27,6 @@ task downloadCombinedConnectorCatalog(type: JavaExec, dependsOn: compileJava) {
     args project(":airbyte-config:init").projectDir
 }
 
-project(":airbyte-config:init").tasks.processResources.dependsOn(downloadCombinedConnectorCatalog)
-project(":airbyte-config:init").tasks.processTestResources.dependsOn(downloadCombinedConnectorCatalog)
-project(":airbyte-config:init").tasks.test.dependsOn(downloadCombinedConnectorCatalog)
-
-
 task generateConnectorSpecsMask(type: JavaExec, dependsOn: generateSeedConnectorSpecs) {
     classpath = sourceSets.main.runtimeClasspath
 
@@ -54,5 +49,9 @@ task generateOssConnectorCatalog(type: JavaExec, dependsOn: generateSeedConnecto
     args '--output-filename'
     args 'oss_catalog.json'
 }
+
+project(":airbyte-config:init").tasks.processResources.dependsOn(generateOssConnectorCatalog)
+project(":airbyte-config:init").tasks.processTestResources.dependsOn(generateOssConnectorCatalog)
+project(":airbyte-config:init").tasks.test.dependsOn(generateOssConnectorCatalog)
 
 Task publishArtifactsTask = getPublishArtifactsTask("$rootProject.ext.version", project)

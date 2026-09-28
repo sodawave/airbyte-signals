@@ -199,11 +199,11 @@ class StandardSyncPersistenceTest extends BaseConfigDatabaseTest {
   }
 
   private PuenteOperationJournalPersistence.JournalRecord journalRecord(final StandardSync sync,
-                                                                         final String fillId,
-                                                                         final String status,
-                                                                         final OffsetDateTime origin,
-                                                                         final OffsetDateTime replica,
-                                                                         final Long desfase) {
+                                                                        final String fillId,
+                                                                        final String status,
+                                                                        final OffsetDateTime origin,
+                                                                        final OffsetDateTime replica,
+                                                                        final Long desfase) {
     return new PuenteOperationJournalPersistence.JournalRecord(
         UUID.randomUUID(), sync.getConnectionId(), fillId, destination1.getDestinationId(), status, null,
         Jsons.jsonNode("{}"), Jsons.jsonNode("{}"), Jsons.jsonNode("{}"), Jsons.jsonNode(List.of(status)),

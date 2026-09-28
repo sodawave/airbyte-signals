@@ -161,7 +161,7 @@ services:
       - MAX_NOTIFY_WORKERS=5
       - SHOULD_RUN_NOTIFY_WORKFLOWS=false
     ports:
-      - "8001"
+      - "127.0.0.1:8101:8001"
     configs:
       - flags
     volumes:
@@ -179,7 +179,7 @@ services:
     container_name: airbyte-webapp
     restart: unless-stopped
     ports:
-      - "80"
+      - "127.0.0.1:8100:80"
     environment:
       - AIRBYTE_ROLE=${AIRBYTE_ROLE:-}
       - AIRBYTE_VERSION=${VERSION}
@@ -245,7 +245,7 @@ services:
     container_name: airbyte-connector-builder-server
     restart: unless-stopped
     ports:
-      - 80
+      - "127.0.0.1:8103:80"
     environment:
       - AIRBYTE_VERSION=${VERSION}
     networks:
