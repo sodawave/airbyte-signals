@@ -2,7 +2,7 @@
 title: 'Puente native Airbyte paper replication'
 type: 'feature'
 created: '2026-09-28'
-status: 'in-progress'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: 'feadfd4ebf42150a01ee5dc4b611db0175e1513e'
@@ -74,6 +74,34 @@ context:
 - 2026-09-28: Implemented the approved native paper-to-paper slice and focused verification coverage.
 
 ## Review Triage Log
+
+- `high` — finite live quota could be oversubscribed by pending fills; fixed with in-flight reservation accounting and atomic persisted debit.
+- `high` — accepted rows could persist when the quota update affected no connection; fixed by locking the connection policy and converting exhausted acceptance to rejection.
+- `high` — the initial paper policy ignored actor maps; fixed by resolving native source/destination `symbol_map` and `tradable_symbols`.
+- `medium` — connector symbol maps were accepted but unused; fixed by canonical consistency checks and map-aware connection resolution.
+- `medium` — connector checks omitted runtime-required fields; fixed with complete source and destination validation.
+- `medium` — idempotency queried the full journal for every fill; fixed with a targeted accepted-fill API and persistence query.
+- `medium` — journal listing and UI loading were unbounded; fixed with a newest-first 200-row bound.
+- `high` — check-then-insert idempotency could race into a unique-index failure; fixed inside the locked persistence transaction with duplicate conversion and conflict-safe insertion.
+- `medium` — ambiguous and duplicate crosswalk rows were accepted; fixed with schema constraints plus runtime validation.
+- `medium` — zero or empty factors/scales produced API-invalid updates; fixed with positive finite UI validation and disabled save.
+- `medium` — journal failures rendered as empty history; fixed with explicit loading, error, and empty states.
+- `high` — workspace editors could fabricate accepted journal rows and debit quota; fixed by restricting append and accepted-fill endpoints to the internal/admin boundary.
+- `false` — source-side `MessageTracker` counting skipped records is intentional source-emission accounting, not destination-delivery accounting.
+- `medium` — `sentAt` was captured before `destination.accept`; fixed by marking the prepared fill at the actual write boundary.
+- `maybe-false` — a container-loss window may outlive the paper destination's local SQLite ledger; platform journal replay protection covers normal retries, but durable container storage requires deployment-level evidence and is deferred.
+- `high` — null live quota was interpreted as exhausted despite meaning unlimited; fixed and covered.
+- `medium` — duplicate source symbols silently overwrote rows; fixed by rejecting duplicate policy rows.
+- `medium` — non-fill records could reach the paper destination; fixed by deterministic pre-write skipping while preserving protocol state.
+- `medium` — unmatched acknowledgments were swallowed; fixed so unrelated state remains available to normal state handling.
+- `medium` — out-of-range numeric origin timestamps could abort replication; fixed by safe parsing and journaled invalid timestamps.
+- `medium` — non-object record payloads could cause a cast failure; fixed with a journaled invalid-record skip.
+- `medium` — journal fetches could race after connection navigation; fixed with request cancellation.
+- `high` — persistence trusted caller-supplied `desfase_ms`; fixed by recomputing from persisted origin and replica timestamps.
+- `low` — journal status and reason identifiers were shown in English; fixed with Spanish labels and fallback handling.
+- `high` — the production `ApiPuenteJournalWriter` boundary had no tests; fixed with lookup, payload mapping, and failure tests.
+- `high` — persisted live-quota debit had no database assertion; fixed with accepted/rejected and reread assertions.
+- `high` — automatic paper policy resolution had no create-connection coverage; fixed with paper and non-paper handler tests.
 
 ## Design Notes
 
